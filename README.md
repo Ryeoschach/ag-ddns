@@ -43,10 +43,15 @@ npm install
 npm start
 
 # 指定端口启动服务端
-# 方法 A：使用命令行参数 `--port` 或 `-p` 启动
+# 方法 A：使用命令行参数启动（支持 --port, -p 或直接跟端口号数字）
 node server/server.js -p 9000
+node server/server.js 9000
 
-# 方法 B：使用 PORT 环境变量启动
+# 方法 B：通过 npm 启动并传参（使用 -- 传参给实际执行的 node 进程）
+npm start -- --port 9000
+npm start -- 9000
+
+# 方法 C：使用 PORT 环境变量启动
 PORT=9000 npm start
 ```
 
@@ -121,8 +126,9 @@ node client.js
 node client.js
 
 # 指定临时端口覆盖上报的目标服务器端口
-# 方法 A：使用命令行参数 `--port` 或 `-p` 启动
+# 方法 A：使用命令行参数启动（支持 --port, -p 或直接跟端口号数字）
 node client.js -p 9000
+node client.js 9000
 
 # 方法 B：使用 PORT 环境变量启动
 PORT=9000 node client.js
@@ -200,10 +206,15 @@ npm install
 npm start
 
 # Start the server on a custom port
-# Method A: Specify via `--port` or `-p` CLI arguments
+# Method A: Specify via CLI arguments (supports --port, -p, or positional port number)
 node server/server.js -p 9000
+node server/server.js 9000
 
-# Method B: Specify via PORT environment variable
+# Method B: Pass arguments via npm start (use -- to pass to the underlying process)
+npm start -- --port 9000
+npm start -- 9000
+
+# Method C: Specify via PORT environment variable
 PORT=9000 npm start
 ```
 
@@ -278,8 +289,9 @@ Open the newly created `client/config.json` and configure:
 node client.js
 
 # Start with a custom port override for the target server url
-# Method A: Specify via `--port` or `-p` CLI arguments
+# Method A: Specify via CLI arguments (supports --port, -p, or positional port number)
 node client.js -p 9000
+node client.js 9000
 
 # Method B: Specify via PORT environment variable
 PORT=9000 node client.js
