@@ -456,13 +456,23 @@ async function start() {
   const cmdPort = getArg('--port') || getArg('-p') || positionalPort || process.env.PORT;
   const port = (cmdPort && !isNaN(parseInt(cmdPort))) ? parseInt(cmdPort) : (settings.port || 8080);
   
-  app.listen(port, '0.0.0.0', () => {
+  const serverInstance = app.listen(port, '0.0.0.0', () => {
     console.log(`=========================================`);
     console.log(` AG-DDNS 服务端启动成功`);
     console.log(` 端口号:  ${port}`);
     console.log(` 访问凭证: ${settings.dashboardToken}`);
     console.log(` 面板网址: http://localhost:${port}`);
     console.log(`=========================================`);
+  });
+
+  serverInstance.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n[错误] 端口号 ${port} 已被其它程序占用，启动失败！`);
+      console.log(`       您可以指定其它端口重新启动，例如: npm start --port ${port + 1}\n`);
+    } else {
+      console.error(`\n[错误] 服务端启动失败: ${err.message}\n`);
+    }
+    process.exit(1);
   });
 }
 
