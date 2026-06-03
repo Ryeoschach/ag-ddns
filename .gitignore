@@ -5,8 +5,8 @@ node_modules/
 server/data/
 
 # 客户端本地敏感配置及 IP 缓存
-client/config.json
-client/ip.cache
+**/config.json
+**/ip.cache
 
 # 脚本运行产生的日志文件
 *.log
