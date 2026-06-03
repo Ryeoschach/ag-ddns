@@ -190,7 +190,8 @@ async function main() {
   
   const config = await ensureConfig();
   
-  const cmdPort = getArg('--port') || getArg('-p') || process.env.PORT;
+  const positionalPort = process.argv.slice(2).find(arg => !isNaN(parseInt(arg)) && String(parseInt(arg)) === arg);
+  const cmdPort = getArg('--port') || getArg('-p') || positionalPort || process.env.PORT;
   if (cmdPort && !isNaN(parseInt(cmdPort))) {
     try {
       const urlObj = new URL(config.serverUrl);

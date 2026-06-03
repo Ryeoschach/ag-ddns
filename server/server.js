@@ -451,8 +451,9 @@ function getArg(opt) {
 async function start() {
   const settings = await getSettings();
   
-  // 优先使用命令行参数或环境变量指定的端口，如果没有才读取数据库配置或使用默认的 8080
-  const cmdPort = getArg('--port') || getArg('-p') || process.env.PORT;
+  // 优先使用命令行参数（--port / -p / 位置参数纯数字）或环境变量指定的端口，如果没有才读取数据库配置或使用默认的 8080
+  const positionalPort = process.argv.slice(2).find(arg => !isNaN(parseInt(arg)) && String(parseInt(arg)) === arg);
+  const cmdPort = getArg('--port') || getArg('-p') || positionalPort || process.env.PORT;
   const port = (cmdPort && !isNaN(parseInt(cmdPort))) ? parseInt(cmdPort) : (settings.port || 8080);
   
   app.listen(port, '0.0.0.0', () => {
