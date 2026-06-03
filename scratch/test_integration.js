@@ -15,8 +15,7 @@ async function setupTestDb() {
     tasks: [],
     logs: [],
     settings: {
-      port: PORT,
-      dashboardToken: 'TEST_TOKEN'
+      port: PORT
     }
   };
   await fs.writeFile(DB_FILE, JSON.stringify(testDb, null, 2), 'utf-8');

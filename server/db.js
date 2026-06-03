@@ -9,8 +9,7 @@ const defaultDb = {
   tasks: [],
   logs: [],
   settings: {
-    port: 8080,
-    dashboardToken: Math.random().toString(36).substring(2, 10).toUpperCase()
+    port: 8080
   }
 };
 

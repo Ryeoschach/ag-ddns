@@ -460,7 +460,6 @@ async function start() {
     console.log(`=========================================`);
     console.log(` AG-DDNS 服务端启动成功`);
     console.log(` 端口号:  ${port}`);
-    console.log(` 访问凭证: ${settings.dashboardToken}`);
     console.log(` 面板网址: http://localhost:${port}`);
     console.log(`=========================================`);
   });

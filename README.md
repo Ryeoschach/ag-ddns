@@ -55,19 +55,17 @@ npm start -- 9000
 PORT=9000 npm start
 ```
 
-#### 3. 登录与配置
+#### 3. 访问与配置
 服务端成功运行后会输出以下日志：
 ```text
 =========================================
  AG-DDNS 服务端启动成功
  端口号:  8080
- 访问凭证: XXXXXXXX
  面板网址: http://localhost:8080
 =========================================
 ```
-1. 复制控制台输出的**访问凭证** (dashboardToken)。
-2. 在浏览器中打开 `http://localhost:8080`（若为本地运行）。
-3. 输入凭证即可登录 Web 控制台。
+1. 在浏览器中打开 `http://localhost:8080`（若为本地运行）。
+2. 即可直接访问并使用 Web 控制台配置各项域名解析任务。
 
 #### 4. Docker 部署 (可选)
 我们也提供了容器化运行方案。由于程序需要本地保存任务和设置，建议挂载主机卷持久化保存数据。
@@ -218,19 +216,17 @@ npm start -- 9000
 PORT=9000 npm start
 ```
 
-#### 3. Log In
+#### 3. Accessing the Dashboard
 When started successfully, the console will print:
 ```text
 =========================================
  AG-DDNS Server Started Successfully
- Port: 8080
- Token: XXXXXXXX
- Dashboard URL: http://localhost:8080
+  Port: 8080
+  Dashboard URL: http://localhost:8080
 =========================================
 ```
-1. Copy the access token (dashboardToken) from the console.
-2. Open `http://localhost:8080` in your web browser.
-3. Paste the token to access the dashboard.
+1. Open `http://localhost:8080` in your web browser.
+2. You can directly access and configure your domain DDNS tasks.
 
 #### 4. Docker Deployment (Optional)
 We also provide a containerized setup for deployment. To persist database settings and configurations, make sure to mount a host directory as a volume.

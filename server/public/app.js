@@ -66,8 +66,6 @@ const translations = {
     settingsTitle: "System Settings",
     lblDashboardPort: "Dashboard Port",
     helpDashboardPort: "Requires server restart to apply changes.",
-    lblDashboardToken: "Dashboard Secret Token",
-    helpDashboardToken: "Protects API accesses. Save this token securely.",
     btnSaveSettings: "Save Settings",
     lblSettingScriptInfo: "Custom Script Header Info / License",
     helpSettingScriptInfo: "This custom text will be prepended as comments at the top of generated scripts.",
@@ -169,8 +167,6 @@ const translations = {
     settingsTitle: "全局系统设置",
     lblDashboardPort: "控制台端口",
     helpDashboardPort: "修改此端口需要重启 DDNS 服务端生效。",
-    lblDashboardToken: "控制台安全校验 Token",
-    helpDashboardToken: "用于保护接口请求，请妥善保存此安全 Token。",
     btnSaveSettings: "保存设置",
     lblSettingScriptInfo: "自定义脚本介绍/授权信息",
     helpSettingScriptInfo: "此处填写的文字将作为注释前缀自动插入到所有导出的 Python/Bash 脚本文件的最上方。",
@@ -873,7 +869,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/api/settings');
       const settings = await res.json();
       document.getElementById('settingPort').value = settings.port || 8080;
-      document.getElementById('settingToken').value = settings.dashboardToken || '';
       document.getElementById('settingScriptInfo').value = settings.scriptInfo || '';
       showModal(settingsModal);
     } catch (e) {
@@ -885,7 +880,6 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     const payload = {
       port: parseInt(document.getElementById('settingPort').value) || 8080,
-      dashboardToken: document.getElementById('settingToken').value,
       scriptInfo: document.getElementById('settingScriptInfo').value
     };
     try {
