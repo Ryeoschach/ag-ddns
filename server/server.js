@@ -148,24 +148,43 @@ async function runDdnsTask(task) {
     // 记录解析出的 IP
     task.lastIp = ip;
 
-    // 2. 调用接口更新域名解析
-    const result = await provider.updateRecord({
-      credentials: task.credentials,
-      domain: task.domain,
-      recordType: task.recordType,
-      ip,
-      ttl: task.ttl,
-      proxied: task.proxied
-    });
+    // 2. 调用接口更新域名解析（支持以逗号分割的多个域名）
+    const domains = task.domain.split(',').map(d => d.trim()).filter(Boolean);
+    let updatedAny = false;
+    const errors = [];
+    const msgs = [];
+
+    for (const d of domains) {
+      try {
+        const result = await provider.updateRecord({
+          credentials: task.credentials,
+          domain: d,
+          recordType: task.recordType,
+          ip,
+          ttl: task.ttl,
+          proxied: task.proxied
+        });
+        if (result.updated) {
+          updatedAny = true;
+        }
+        msgs.push(`${d}: ${result.msg}`);
+      } catch (err) {
+        errors.push(`${d} 失败: ${err.message}`);
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error(errors.join('; '));
+    }
 
     // 3. 更新任务状态数据
     task.lastChecked = new Date().toISOString();
     task.lastStatus = 'success';
-    task.lastMessage = result.msg || '更新成功';
+    task.lastMessage = msgs.join('; ') || '更新成功';
     await saveTask(task);
 
-    if (result.updated) {
-      await addLog(task.id, task.name, 'success', `IP 成功更新为 ${ip} (${result.msg})`);
+    if (updatedAny) {
+      await addLog(task.id, task.name, 'success', `IP 成功更新为 ${ip} (${task.lastMessage})`);
     } else {
       // IP 没有变化时无需重复写入日志，避免日志爆炸
     }
@@ -319,27 +338,46 @@ app.post('/api/client/report', async (req, res) => {
     // 记录客户端上报的 IP
     task.lastIp = ip;
 
-    // 更新 DNS 记录
-    const result = await provider.updateRecord({
-      credentials: task.credentials,
-      domain: task.domain,
-      recordType: task.recordType,
-      ip,
-      ttl: task.ttl,
-      proxied: task.proxied
-    });
+    // 更新 DNS 记录（支持以逗号分割的多个域名）
+    const domains = task.domain.split(',').map(d => d.trim()).filter(Boolean);
+    let updatedAny = false;
+    const errors = [];
+    const msgs = [];
+
+    for (const d of domains) {
+      try {
+        const result = await provider.updateRecord({
+          credentials: task.credentials,
+          domain: d,
+          recordType: task.recordType,
+          ip,
+          ttl: task.ttl,
+          proxied: task.proxied
+        });
+        if (result.updated) {
+          updatedAny = true;
+        }
+        msgs.push(`${d}: ${result.msg}`);
+      } catch (err) {
+        errors.push(`${d} 失败: ${err.message}`);
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error(errors.join('; '));
+    }
 
     // 更新数据库中的任务状态
     task.lastChecked = new Date().toISOString();
     task.lastStatus = 'success';
-    task.lastMessage = `客户端上报: ${result.msg}`;
+    task.lastMessage = `客户端上报: ${msgs.join('; ')}`;
     await saveTask(task);
 
-    if (result.updated) {
+    if (updatedAny) {
       await addLog(task.id, task.name, 'success', `客户端上报 IP ${ip}。DNS 解析已成功更新。`);
     }
 
-    res.json({ success: true, message: '上报处理完毕', ip, updated: result.updated });
+    res.json({ success: true, message: '上报处理完毕', ip, updated: updatedAny });
   } catch (err) {
     task.lastChecked = new Date().toISOString();
     task.lastStatus = 'error';

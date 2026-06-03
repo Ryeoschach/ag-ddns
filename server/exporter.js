@@ -20,6 +20,7 @@ function escapePython(val) {
 export function generatePython(task, settings = {}) {
   const { domain, recordType, provider, credentials, ttl, proxied } = task;
   const targetTtl = ttl || 600;
+  const cacheDomainKey = domain.replace(/[\s,]+/g, '_');
   
   const customInfo = settings.scriptInfo || '';
   let customHeader = '';
@@ -329,7 +330,7 @@ from datetime import datetime
 DOMAIN = '${escapePython(domain)}'
 RECORD_TYPE = '${escapePython(recordType)}'
 TTL = ${targetTtl}
-CACHE_FILE = "/tmp/ddns_cache_${escapePython(domain)}.ip"
+CACHE_FILE = "/tmp/ddns_cache_${escapePython(cacheDomainKey)}.ip"
 
 # 脚本所在目录及日志配置
 SCRIPT_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
@@ -416,6 +417,7 @@ def save_cache(ip):
 ${providerCode}
 
 def main():
+    global DOMAIN
     log_info(f"开始执行 DDNS 状态检测 {DOMAIN} ({RECORD_TYPE})...")
     ip = get_current_ip()
     if not ip:
@@ -428,12 +430,23 @@ def main():
         log_info("IP 相比上次没有变化，跳过更新。")
         sys.exit(0)
         
-    try:
-        if update_ddns(ip):
-            save_cache(ip)
-            log_info("DDNS 记录更新成功。")
-    except Exception as e:
-        log_err(f"更新 DDNS 记录发生错误: {e}")
+    doms = [d.strip() for d in DOMAIN.split(',') if d.strip()]
+    success = True
+    for d in doms:
+        DOMAIN = d
+        log_info(f"正在更新域名: {d}")
+        try:
+            update_ddns(ip)
+        except Exception as e:
+            log_err(f"更新 {d} 发生错误: {e}")
+            success = False
+            
+    if success:
+        save_cache(ip)
+        log_info("所有域名 DDNS 记录更新成功。")
+        sys.exit(0)
+    else:
+        log_err("部分或全部域名更新失败。")
         sys.exit(1)
 
 if __name__ == "__main__":
@@ -447,6 +460,7 @@ if __name__ == "__main__":
 export function generateBash(task, settings = {}) {
   const { domain, recordType, provider, credentials, ttl, proxied } = task;
   const targetTtl = ttl || 600;
+  const cacheDomainKey = domain.replace(/[\s,]+/g, '_');
   
   const customInfo = settings.scriptInfo || '';
   let customHeader = '';
@@ -859,7 +873,7 @@ ${customHeader}# 本脚本由 AG-DDNS 自动导出生成。
 DOMAIN="${escapeBash(domain)}"
 RECORD_TYPE="${escapeBash(recordType)}"
 TTL=${targetTtl}
-CACHE_FILE="/tmp/ddns_cache_${escapeBash(domain)}.ip"
+CACHE_FILE="/tmp/ddns_cache_${escapeBash(cacheDomainKey)}.ip"
 
 # 脚本所在目录及日志配置
 SCRIPT_DIR=\$(cd "\$(dirname "\${BASH_SOURCE[0]:-\$0}")" && pwd)
@@ -955,12 +969,29 @@ if check_cache "\$CURRENT_IP"; then
   exit 0
 fi
 
-if update_ddns "\$CURRENT_IP"; then
+# 将逗号或空格分割的域名解析为数组
+IFS=', ' read -r -a DOMAINS_ARR <<< "\$DOMAIN"
+UPDATED_SUCCESS=true
+
+for d in "\${DOMAINS_ARR[@]}"; do
+  # 去除首尾空格
+  d=\$(echo "\$d" | xargs)
+  if [ -n "\$d" ]; then
+    DOMAIN="\$d"
+    log_info "正在更新域名: \$d"
+    if ! update_ddns "\$CURRENT_IP"; then
+      log_err "更新域名失败: \$d"
+      UPDATED_SUCCESS=false
+    fi
+  fi
+done
+
+if [ "\$UPDATED_SUCCESS" = true ]; then
   save_cache "\$CURRENT_IP"
-  log_info "DDNS 记录更新成功。"
+  log_info "所有域名 DDNS 记录更新成功。"
   exit 0
 else
-  log_err "更新 DDNS 记录失败。"
+  log_err "部分或全部域名更新失败。"
   exit 1
 fi
 `;

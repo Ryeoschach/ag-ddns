@@ -5,7 +5,7 @@ const mockTasks = [
     id: 'task_cf',
     name: 'Cloudflare IPv4',
     provider: 'cloudflare',
-    domain: 'test.example.com',
+    domain: 'test1.example.com, test2.example.com',
     recordType: 'A',
     ttl: 120,
     proxied: true,

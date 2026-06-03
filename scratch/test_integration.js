@@ -38,7 +38,7 @@ async function runTests() {
   const createTaskPayload = {
     name: 'Integration Test Task',
     provider: 'cloudflare',
-    domain: 'client.test.com',
+    domain: 'client1.test.com, client2.test.com',
     recordType: 'A',
     mode: 'remote-client',
     checkInterval: 5,
