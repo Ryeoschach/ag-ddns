@@ -153,6 +153,22 @@ PORT=9000 node client.js
 > 运行命令激活服务：
 > `sudo systemctl enable --now ddns-agent.service`
 
+#### 4. 使用 Docker 部署客户端 (可选)
+我们为客户端代理也提供了 Docker 支持，适合在群晖 NAS、无 Node.js 环境的软路由等设备上运行。
+1. 构建客户端 Docker 镜像：
+   ```bash
+   docker build -t ag-ddns-client -f client/Dockerfile client
+   ```
+2. 运行客户端容器（挂载宿主机配置文件以持久化配置及 IP 缓存）：
+   在宿主机指定目录先准备好 `config.json`（可拷贝默认配置模版修改），然后运行：
+   ```bash
+   docker run -d \
+     --name ag-ddns-client \
+     -v /path/to/host/config.json:/app/config.json \
+     -v /path/to/host/ip.cache:/app/ip.cache \
+     ag-ddns-client
+   ```
+
 ---
 
 ### 独立导出脚本使用说明
@@ -313,6 +329,22 @@ PORT=9000 node client.js
 > ```
 > Enable and start the service:
 > `sudo systemctl enable --now ddns-agent.service`
+
+#### 4. Running Client Agent with Docker (Optional)
+We also provide Docker support for the client agent, which is suitable for container environments like Synology NAS or routers without native Node.js support.
+1. Build the client Docker image:
+   ```bash
+   docker build -t ag-ddns-client -f client/Dockerfile client
+   ```
+2. Start the container (mount host config and cache to persist state):
+   Prepare your `config.json` on the host machine first, then run:
+   ```bash
+   docker run -d \
+     --name ag-ddns-client \
+     -v /path/to/host/config.json:/app/config.json \
+     -v /path/to/host/ip.cache:/app/ip.cache \
+     ag-ddns-client
+   ```
 
 ---
 

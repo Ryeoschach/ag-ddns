@@ -3,12 +3,16 @@
  * 定期检查本机 IP，并上报给中心服务器。
  */
 
-import { promises as fs } from 'fs';
+import { promises as fs, existsSync } from 'fs';
 import path from 'path';
 import os from 'os';
 
-const CONFIG_PATH = path.resolve('client/config.json');
-const CACHE_PATH = path.resolve('client/ip.cache');
+// 智能判断配置文件存放路径：
+// 如果当前工作目录下有 client 目录，且 client.js 不在当前目录下（说明是在项目根目录运行），则保存在 client/ 子目录下；
+// 否则（在 client 目录下运行、独立部署、或 Docker 环境下），直接保存在当前工作目录下。
+const useSubdir = existsSync(path.resolve('client')) && !existsSync(path.resolve('client.js'));
+const CONFIG_PATH = useSubdir ? path.resolve('client/config.json') : path.resolve('config.json');
+const CACHE_PATH = useSubdir ? path.resolve('client/ip.cache') : path.resolve('ip.cache');
 
 const defaultConfig = {
   serverUrl: 'http://localhost:8080',
