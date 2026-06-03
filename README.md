@@ -1,59 +1,41 @@
 # AG-DDNS
 
 <div align="center">
-  <!-- Inline SVG Banner for Premium Aesthetics -->
-  <svg width="600" height="150" viewBox="0 0 600 150" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <!-- Background Gradient -->
-      <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#0f172a" />
-        <stop offset="100%" stop-color="#1e1b4b" />
-      </linearGradient>
-      <!-- Logo Orbits & Core Gradient -->
-      <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#38bdf8" />
-        <stop offset="100%" stop-color="#818cf8" />
-      </linearGradient>
-      <!-- Title text gradient -->
-      <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#38bdf8" />
-        <stop offset="50%" stop-color="#818cf8" />
-        <stop offset="100%" stop-color="#fb7185" />
-      </linearGradient>
-      <!-- Drop shadow filter -->
-      <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-        <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#818cf8" flood-opacity="0.15"/>
-      </filter>
-    </defs>
-    
-    <!-- Base Plate -->
-    <rect width="600" height="150" rx="24" fill="url(#bgGrad)" />
-    <rect width="598" height="148" x="1" y="1" rx="23" stroke="#334155" stroke-width="1.5" opacity="0.7"/>
-    
-    <!-- Logo Icon (Earth Orbit Sync Design) -->
-    <g transform="translate(50, 25)" filter="url(#shadow)">
-      <!-- Revolving Orbit Ring -->
-      <circle cx="50" cy="50" r="42" stroke="#475569" stroke-width="1" stroke-dasharray="3 6" />
-      <circle cx="50" cy="50" r="36" stroke="#818cf8" stroke-width="1.5" opacity="0.4" />
-      
-      <!-- Core Globe Shield -->
-      <circle cx="50" cy="50" r="26" fill="url(#logoGrad)" />
-      
-      <!-- Globe grid curves -->
-      <path d="M 24 50 Q 50 62 76 50" stroke="#ffffff" stroke-width="1.5" fill="none" opacity="0.7" />
-      <path d="M 24 50 Q 50 38 76 50" stroke="#ffffff" stroke-width="1.5" fill="none" opacity="0.7" />
-      <path d="M 50 24 Q 62 50 50 76" stroke="#ffffff" stroke-width="1.5" fill="none" opacity="0.7" />
-      <path d="M 50 24 Q 38 50 50 76" stroke="#ffffff" stroke-width="1.5" fill="none" opacity="0.7" />
-      
-      <!-- Dynamic updates arrows (Sync indicator) -->
-      <path d="M 88 38 A 40 40 0 0 1 90 60 M 90 60 L 84 55 M 90 60 L 96 55" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-      <path d="M 12 62 A 40 40 0 0 1 10 40 M 10 40 L 16 45 M 10 40 L 4 45" stroke="#fb7185" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-    </g>
-    
-    <!-- Typography -->
-    <text x="180" y="75" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="42" fill="url(#textGrad)" letter-spacing="1">AG-DDNS</text>
-    <text x="182" y="105" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="14" fill="#94a3b8" letter-spacing="2">LIGHTWEIGHT C/S DDNS MANAGER</text>
-  </svg>
+<svg width="600" height="150" viewBox="0 0 600 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+<stop offset="0%" stop-color="#0f172a" />
+<stop offset="100%" stop-color="#1e1b4b" />
+</linearGradient>
+<linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+<stop offset="0%" stop-color="#38bdf8" />
+<stop offset="100%" stop-color="#818cf8" />
+</linearGradient>
+<linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+<stop offset="0%" stop-color="#38bdf8" />
+<stop offset="50%" stop-color="#818cf8" />
+<stop offset="100%" stop-color="#fb7185" />
+</linearGradient>
+<filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+<feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#818cf8" flood-opacity="0.15"/>
+</filter>
+</defs>
+<rect width="600" height="150" rx="24" fill="url(#bgGrad)" />
+<rect width="598" height="148" x="1" y="1" rx="23" stroke="#334155" stroke-width="1.5" opacity="0.7"/>
+<g transform="translate(50, 25)" filter="url(#shadow)">
+<circle cx="50" cy="50" r="42" stroke="#475569" stroke-width="1" stroke-dasharray="3 6" />
+<circle cx="50" cy="50" r="36" stroke="#818cf8" stroke-width="1.5" opacity="0.4" />
+<circle cx="50" cy="50" r="26" fill="url(#logoGrad)" />
+<path d="M 24 50 Q 50 62 76 50" stroke="#ffffff" stroke-width="1.5" fill="none" opacity="0.7" />
+<path d="M 24 50 Q 50 38 76 50" stroke="#ffffff" stroke-width="1.5" fill="none" opacity="0.7" />
+<path d="M 50 24 Q 62 50 50 76" stroke="#ffffff" stroke-width="1.5" fill="none" opacity="0.7" />
+<path d="M 50 24 Q 38 50 50 76" stroke="#ffffff" stroke-width="1.5" fill="none" opacity="0.7" />
+<path d="M 88 38 A 40 40 0 0 1 90 60 M 90 60 L 84 55 M 90 60 L 96 55" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M 12 62 A 40 40 0 0 1 10 40 M 10 40 L 16 45 M 10 40 L 4 45" stroke="#fb7185" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+</g>
+<text x="180" y="75" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="42" fill="url(#textGrad)" letter-spacing="1">AG-DDNS</text>
+<text x="182" y="105" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="14" fill="#94a3b8" letter-spacing="2">LIGHTWEIGHT C/S DDNS MANAGER</text>
+</svg>
 </div>
 
 <p align="center">
