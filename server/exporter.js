@@ -381,7 +381,7 @@ def get_current_ip():
     if RECORD_TYPE == "AAAA":
         ip_regex = r"[0-9a-fA-F:]+:[0-9a-fA-F:]+"
     elif RECORD_TYPE == "A":
-        ip_regex = r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
+        ip_regex = r"\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"
     else:
         ip_regex = r".+" # 匹配任意字符串
     for url in urls:
