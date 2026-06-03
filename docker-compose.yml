@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  ag-ddns:
+    build: .
+    container_name: ag-ddns
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # 将数据库和日志持久化挂载到主机的 ./data 目录下
+      - ./data:/app/server/data
+    environment:
+      # 可在这里指定容器运行端口（需同步修改上方 ports 的容器端口映射）
+      - PORT=8080

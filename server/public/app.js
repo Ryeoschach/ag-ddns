@@ -1,0 +1,995 @@
+// AG-DDNS 控制面板脚本
+// 支持中英文语言包和深色/浅色主题（自动跟随系统）
+
+const translations = {
+  en: {
+    appTitle: "DDNS Dashboard",
+    logoSub: "Dynamic DNS Manager",
+    themeAuto: "🌓 System",
+    themeLight: "☀️ Light",
+    themeDark: "🌙 Dark",
+    btnNewTask: "New DDNS Task",
+    btnSettings: "Settings",
+    metricTotal: "Total Tasks",
+    metricHealthy: "Active / Healthy",
+    metricFailed: "Failed / Offline",
+    secTasksTitle: "Monitored DNS Records",
+    pulseLive: "● Live",
+    emptyStateTitle: "No DDNS Tasks Found",
+    emptyStateSub: "Click \"New DDNS Task\" to add your first domain configuration.",
+    secLogsTitle: "Activity Console Logs",
+    btnClearLogs: "Clear Console",
+    modalTitleAdd: "Add DDNS Task",
+    modalTitleEdit: "Edit DDNS Task",
+    lblTaskName: "Task Name",
+    phTaskName: "e.g. Home Server IPv4",
+    lblOperationMode: "Operation Mode",
+    optModeLocal: "Local Mode (Server Updates)",
+    optModeRemote: "Remote Client Mode (Agent Reports)",
+    helpOperationMode: "Local runs checks on this server. Remote expects an external client agent to report its IP.",
+    lblDnsProvider: "DNS Provider",
+    lblCfAuthMethod: "Auth Method",
+    optCfToken: "API Token (Bearer)",
+    optCfGlobal: "Global API Key",
+    lblCfZoneId: "Zone ID (Optional)",
+    phCfZoneId: "Auto-detected if left empty",
+    lblCfToken: "API Token",
+    phCfToken: "Enter Cloudflare API Token",
+    lblCfEmail: "Account Email",
+    phCfEmail: "user@example.com",
+    lblCfGlobalKey: "Global API Key",
+    phCfGlobalKey: "Enter Global API Key",
+    lblAliKeyId: "AccessKey ID",
+    lblAliSecret: "AccessKey Secret",
+    lblDpId: "Token ID",
+    lblDpToken: "Token Value",
+    lblDomainName: "Domain Name",
+    phDomainName: "e.g. server.example.com",
+    lblRecordType: "Record Type",
+    lblTtl: "TTL (Seconds)",
+    phTtl: "e.g. 600",
+    lblCheckInterval: "Check Interval (Minutes)",
+    phCheckInterval: "e.g. 5",
+    lblIpSource: "IP Source",
+    optIpPublic: "Public IP (Auto APIs)",
+    optIpInterface: "Local Network Interface",
+    optIpUrl: "Custom HTTP URL",
+    lblInterfaceName: "Interface Name",
+    lblCustomCheckUrl: "Custom Check URL",
+    lblClientRegKey: "Remote Client Registration Key",
+    btnCopyKey: "Copy Key",
+    helpClientKey: "Provide this key to your Node.js agent client config so it can authenticate reports.",
+    lblEnableTask: "Enable Task",
+    lblCfProxied: "Enable Cloudflare CDN Proxy (Proxied)",
+    btnCancel: "Cancel",
+    btnSaveTask: "Save Task",
+    settingsTitle: "System Settings",
+    lblDashboardPort: "Dashboard Port",
+    helpDashboardPort: "Requires server restart to apply changes.",
+    lblDashboardToken: "Dashboard Secret Token",
+    helpDashboardToken: "Protects API accesses. Save this token securely.",
+    btnSaveSettings: "Save Settings",
+    lblSettingScriptInfo: "Custom Script Header Info / License",
+    helpSettingScriptInfo: "This custom text will be prepended as comments at the top of generated scripts.",
+    exportTitle: "Export Standalone Script",
+    exportSub: "Export a self-contained, lightweight, zero-dependency script pre-filled with credentials for domain:",
+    tabBash: "Bash Script (.sh)",
+    tabPython: "Python Script (.py)",
+    btnCopy: "Copy Script",
+    btnDownload: "Download File",
+    
+    // JS 动态翻译字符
+    modeLocal: "Local Mode",
+    modeAgent: "Agent Mode",
+    statusHealthy: "Healthy",
+    statusFailed: "Failed",
+    statusReady: "Ready",
+    statusDisabled: "Disabled",
+    statusNever: "Never",
+    rowDnsProvider: "DNS Provider",
+    rowRecordType: "Record Type",
+    rowDnsIp: "DNS IP Address",
+    rowCheckInterval: "Check Interval",
+    rowLastChecked: "Last Checked",
+    rowMessage: "Feedback State",
+    unitMins: "mins",
+    valNa: "N/A",
+    tipRunNow: "Run Check Now",
+    tipExport: "Export Standalone Script",
+    tipEdit: "Edit Config",
+    tipDelete: "Delete Task",
+    tipDuplicate: "Duplicate Task",
+    confirmDelete: "Are you sure you want to delete DDNS task \"{name}\"?",
+    copySuccess: "Copied to clipboard!",
+    errRunTask: "Error running task",
+    errNetWork: "Network error",
+    settingsSaveSuccess: "Settings saved. Port changes will apply upon server restart."
+  },
+  zh: {
+    appTitle: "DDNS 管理面板",
+    logoSub: "智能动态域名解析管理器",
+    themeAuto: "🌓 跟随系统",
+    themeLight: "☀️ 浅色模式",
+    themeDark: "🌙 深色模式",
+    btnNewTask: "新建 DDNS 任务",
+    btnSettings: "全局设置",
+    metricTotal: "任务总数",
+    metricHealthy: "运行正常 / 健康",
+    metricFailed: "运行失败 / 离线",
+    secTasksTitle: "已托管域名记录",
+    pulseLive: "● 实时监测",
+    emptyStateTitle: "暂无域名解析任务",
+    emptyStateSub: "点击上方“新建 DDNS 任务”按钮添加您的第一个解析配置。",
+    secLogsTitle: "运行日志控制台",
+    btnClearLogs: "清空日志",
+    modalTitleAdd: "添加 DDNS 解析任务",
+    modalTitleEdit: "编辑 DDNS 解析任务",
+    lblTaskName: "任务名称",
+    phTaskName: "例如：群晖NAS IPv4",
+    lblOperationMode: "运行模式",
+    optModeLocal: "本地模式（服务端定期检测并更新）",
+    optModeRemote: "远程客户端模式（远程客户端上报IP）",
+    helpOperationMode: "本地模式：由本服务器直接获取自身公网IP进行解析。远程模式：由安装了Agent代理的外部设备上报IP后，再由本服务器调用API更新解析。",
+    lblDnsProvider: "DNS 服务商",
+    lblCfAuthMethod: "身份验证方式",
+    optCfToken: "API 密钥 Token (推荐)",
+    optCfGlobal: "全局 Global API Key",
+    lblCfZoneId: "Zone ID (选填)",
+    phCfZoneId: "不填将通过API自动检测获取",
+    lblCfToken: "API Token",
+    phCfToken: "请输入 Cloudflare API Token 密钥",
+    lblCfEmail: "账户 Email",
+    phCfEmail: "user@example.com",
+    lblCfGlobalKey: "全局 API Key",
+    phCfGlobalKey: "请输入 Global API Key",
+    lblAliKeyId: "AccessKey ID",
+    lblAliSecret: "AccessKey Secret",
+    lblDpId: "Token ID",
+    lblDpToken: "Token 密钥",
+    lblDomainName: "完整域名",
+    phDomainName: "例如：nas.example.com",
+    lblRecordType: "解析记录类型",
+    lblTtl: "TTL 缓存生存时间 (秒)",
+    phTtl: "默认 600 秒",
+    lblCheckInterval: "检查周期 (分钟)",
+    phCheckInterval: "默认 5 分钟",
+    lblIpSource: "本地 IP 获取源",
+    optIpPublic: "公网 API 自动探测",
+    optIpInterface: "读取本地物理网卡",
+    optIpUrl: "自定义网页提取 URL",
+    lblInterfaceName: "网卡接口名称",
+    lblCustomCheckUrl: "自定义 IP 检测网页 URL",
+    lblClientRegKey: "远程客户端注册密钥 (Client Key)",
+    btnCopyKey: "复制密钥",
+    helpClientKey: "请将此 Key 填入您安装在远程设备上的 node 客户端 agent 配置文件中，以便通过身份验证。",
+    lblEnableTask: "启用此 DDNS 任务",
+    lblCfProxied: "开启 Cloudflare CDN 代理 (已代理 / 橙色云朵)",
+    btnCancel: "取消",
+    btnSaveTask: "保存任务",
+    settingsTitle: "全局系统设置",
+    lblDashboardPort: "控制台端口",
+    helpDashboardPort: "修改此端口需要重启 DDNS 服务端生效。",
+    lblDashboardToken: "控制台安全校验 Token",
+    helpDashboardToken: "用于保护接口请求，请妥善保存此安全 Token。",
+    btnSaveSettings: "保存设置",
+    lblSettingScriptInfo: "自定义脚本介绍/授权信息",
+    helpSettingScriptInfo: "此处填写的文字将作为注释前缀自动插入到所有导出的 Python/Bash 脚本文件的最上方。",
+    exportTitle: "导出独立运行脚本",
+    exportSub: "导出一个完全独立、包含内置凭证且无外部模块依赖的轻量级自动更新脚本：",
+    tabBash: "Bash 脚本 (.sh)",
+    tabPython: "Python 脚本 (.py)",
+    btnCopy: "复制脚本",
+    btnDownload: "下载文件",
+    
+    // JS 动态翻译字符
+    modeLocal: "本地模式",
+    modeAgent: "客户端模式",
+    statusHealthy: "正常",
+    statusFailed: "失败",
+    statusReady: "就绪",
+    statusDisabled: "已禁用",
+    statusNever: "从未检测",
+    rowDnsProvider: "DNS 服务商",
+    rowRecordType: "记录类型",
+    rowDnsIp: "当前解析 IP",
+    rowCheckInterval: "检测周期",
+    rowLastChecked: "上次检查",
+    rowMessage: "反馈状态",
+    unitMins: "分钟",
+    valNa: "无",
+    tipRunNow: "立即执行检测更新",
+    tipExport: "导出独立脚本",
+    tipEdit: "编辑配置",
+    tipDelete: "删除任务",
+    tipDuplicate: "复制此任务配置",
+    confirmDelete: "您确定要删除 DDNS 任务 \"{name}\" 吗？",
+    copySuccess: "已成功复制到剪贴板！",
+    errRunTask: "任务执行失败",
+    errNetWork: "网络请求异常",
+    settingsSaveSuccess: "设置保存成功！端口修改将在重启服务端后生效。"
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  // 主题与语言选择下拉框
+  const langSelect = document.getElementById('langSelect');
+  const themeSelect = document.getElementById('themeSelect');
+
+  // 加载语言（默认自动读取浏览器语言）
+  let currentLang = localStorage.getItem('ddns_lang') || (navigator.language.startsWith('zh') ? 'zh' : 'en');
+  
+  // 加载主题（默认跟随系统）
+  let currentTheme = localStorage.getItem('ddns_theme') || 'system';
+
+  // 获取各种 DOM 元素
+  const tasksGrid = document.getElementById('tasksGrid');
+  const emptyState = document.getElementById('emptyState');
+  const logsConsole = document.getElementById('logsConsole');
+  const btnClearLogs = document.getElementById('btnClearLogs');
+  
+  // 系统运行状态指标卡片
+  const metricTotal = document.getElementById('metricTotal');
+  const metricHealthy = document.getElementById('metricHealthy');
+  const metricFailed = document.getElementById('metricFailed');
+  
+  // 弹窗对话框
+  const taskModal = document.getElementById('taskModal');
+  const settingsModal = document.getElementById('settingsModal');
+  const exportModal = document.getElementById('exportModal');
+  
+  // 开启弹窗的按钮
+  const btnNewTask = document.getElementById('btnNewTask');
+  const btnSettings = document.getElementById('btnSettings');
+  
+  // 关闭弹窗的按钮
+  document.getElementById('closeTaskModal').onclick = () => closeModal(taskModal);
+  document.getElementById('btnCancelTask').onclick = () => closeModal(taskModal);
+  document.getElementById('closeSettingsModal').onclick = () => closeModal(settingsModal);
+  document.getElementById('btnCancelSettings').onclick = () => closeModal(settingsModal);
+  document.getElementById('closeExportModal').onclick = () => closeModal(exportModal);
+  
+  // 表单元素
+  const taskForm = document.getElementById('taskForm');
+  const settingsForm = document.getElementById('settingsForm');
+  
+  // 下拉菜单联动关联元素
+  const taskProvider = document.getElementById('taskProvider');
+  const cfAuthType = document.getElementById('cfAuthType');
+  const taskMode = document.getElementById('taskMode');
+  const taskIpSource = document.getElementById('taskIpSource');
+  
+  // 数据缓存变量
+  let allTasks = [];
+  let activeExportTaskId = null;
+  let activeExportType = 'bash'; // 或者 'python'
+  
+  // 执行初始化加载
+  applyTheme(currentTheme);
+  applyLanguage(currentLang);
+  fetchTasks();
+  fetchLogs();
+  
+  // 每 10 秒定期拉取一次任务状态和控制台日志
+  setInterval(() => {
+    fetchTasks(true);
+    fetchLogs();
+  }, 10000);
+  
+  // 绑定事件监听器
+  btnNewTask.onclick = () => showTaskModal();
+  btnSettings.onclick = () => showSettingsModal();
+  btnClearLogs.onclick = clearConsoleLogs;
+  
+  // 更改服务商/运行模式时，联动隐藏/显示对应表单
+  taskProvider.onchange = () => toggleProviderCredentialsFields();
+  cfAuthType.onchange = () => toggleCfAuthTypeFields();
+  taskMode.onchange = () => toggleModeFields();
+  taskIpSource.onchange = () => toggleIpSourceFields();
+  
+  // 切换语言和主题
+  langSelect.onchange = () => applyLanguage(langSelect.value);
+  themeSelect.onchange = () => {
+    applyTheme(themeSelect.value);
+    localStorage.setItem('ddns_theme', themeSelect.value);
+  };
+  
+  // 监听系统主题颜色切换
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (themeSelect.value === 'system') {
+      applyTheme('system');
+    }
+  });
+
+  // 复制客户端密钥
+  document.getElementById('btnCopyKey').onclick = () => {
+    const keyVal = document.getElementById('clientKeyVal').innerText;
+    if (keyVal && keyVal !== 'Generate on save') {
+      navigator.clipboard.writeText(keyVal).then(() => {
+        alert(t('copySuccess', 'Copied to clipboard!'));
+      });
+    }
+  };
+  
+  // 提交表单
+  taskForm.onsubmit = handleTaskSubmit;
+  settingsForm.onsubmit = handleSettingsSubmit;
+  
+  // 导出脚本面板的标签页切换
+  const tabBash = document.getElementById('tabBash');
+  const tabPython = document.getElementById('tabPython');
+  
+  tabBash.onclick = () => toggleExportTab('bash');
+  tabPython.onclick = () => toggleExportTab('python');
+  
+  document.getElementById('btnCopyScript').onclick = copyExportedScript;
+  document.getElementById('btnDownloadScript').onclick = downloadExportedScript;
+  
+  // 工具方法
+  function showModal(modal) {
+    modal.classList.add('active');
+  }
+  
+  function closeModal(modal) {
+    modal.classList.remove('active');
+  }
+  
+  // 获取翻译词条的助手方法
+  function t(key, defaultVal = '') {
+    return (translations[currentLang] && translations[currentLang][key]) || defaultVal;
+  }
+
+  function applyLanguage(lang) {
+    currentLang = lang;
+    localStorage.setItem('ddns_lang', lang);
+    langSelect.value = lang;
+
+    // 遍历并翻译页面上所有带 data-i18n 的静态标签
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      const translation = t(key);
+      if (translation) {
+        if (el.children.length === 0) {
+          el.innerText = translation;
+        } else {
+          el.innerText = translation;
+        }
+      }
+    });
+
+    // 翻译输入框的占位文本 placeholder
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+      const key = el.getAttribute('data-i18n-placeholder');
+      const placeholderText = t(key);
+      if (placeholderText) {
+        el.placeholder = placeholderText;
+      }
+    });
+
+    // 重新渲染列表以更新语言文本
+    renderTasks();
+  }
+
+  function applyTheme(theme) {
+    document.body.classList.remove('theme-light', 'theme-dark');
+    themeSelect.value = theme;
+    
+    if (theme === 'system') {
+      const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.body.classList.add(isSystemDark ? 'theme-dark' : 'theme-light');
+    } else {
+      document.body.classList.add(`theme-${theme}`);
+    }
+  }
+  
+  /**
+   * 拉取任务数据并渲染
+   */
+  async function fetchTasks(silent = false) {
+    try {
+      const res = await fetch('/api/tasks');
+      allTasks = await res.json();
+      renderTasks();
+      updateMetrics();
+    } catch (e) {
+      if (!silent) console.error(t('errNetWork', 'Network error'), e);
+    }
+  }
+  
+  /**
+   * 拉取服务器日志数据并渲染
+   */
+  async function fetchLogs() {
+    try {
+      const res = await fetch('/api/logs');
+      const logs = await res.json();
+      renderLogs(logs);
+    } catch (e) {
+      console.error('Failed to load logs', e);
+    }
+  }
+  
+  /**
+   * 将任务数据渲染到表格卡片中
+   */
+  function renderTasks() {
+    const cards = tasksGrid.querySelectorAll('.task-card');
+    cards.forEach(c => c.remove());
+    
+    if (allTasks.length === 0) {
+      emptyState.style.display = 'flex';
+      return;
+    }
+    
+    emptyState.style.display = 'none';
+    
+    allTasks.forEach(task => {
+      const card = document.createElement('div');
+      card.className = `task-card ${task.enabled ? task.lastStatus : 'disabled'}`;
+      
+      const lastCheckTime = task.lastChecked ? formatDate(task.lastChecked) : t('statusNever', 'Never');
+      
+      let statusLabel = t('statusReady', 'Ready');
+      if (!task.enabled) {
+        statusLabel = t('statusDisabled', 'Disabled');
+      } else if (task.lastStatus === 'success') {
+        statusLabel = t('statusHealthy', 'Healthy');
+      } else if (task.lastStatus === 'error') {
+        statusLabel = t('statusFailed', 'Failed');
+      }
+      
+      card.innerHTML = `
+        <div class="card-header">
+          <div class="card-title">
+            <h3>${escapeHtml(task.name)}</h3>
+            <div class="domain-name">${escapeHtml(task.domain)}</div>
+          </div>
+          <div style="display:flex; gap: 0.35rem;">
+            <span class="badge badge-mode">${task.mode === 'local' ? t('modeLocal', 'Local') : t('modeAgent', 'Agent')}</span>
+            <span class="badge badge-status">${statusLabel}</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="info-row">
+            <span class="info-label">${t('rowDnsProvider', 'DNS Provider')}</span>
+            <span class="info-value text-capitalize">${task.provider}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">${t('rowRecordType', 'Record Type')}</span>
+            <span class="info-value mono">${task.recordType}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">${t('rowDnsIp', 'DNS IP Address')}</span>
+            <span class="info-value mono">${task.lastIp || t('valNa', 'N/A')}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">${t('rowCheckInterval', 'Check Interval')}</span>
+            <span class="info-value">${task.checkInterval} ${t('unitMins', 'mins')}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">${t('rowLastChecked', 'Last Checked')}</span>
+            <span class="info-value">${lastCheckTime}</span>
+          </div>
+          <div class="info-row" style="border:none;">
+            <span class="info-label">${t('rowMessage', 'Message')}</span>
+            <span class="info-value" style="font-size: 0.75rem; text-align:right; max-width: 70%; word-break:break-all;">${escapeHtml(task.lastMessage || '')}</span>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="footer-actions">
+            ${task.enabled && task.mode === 'local' ? `
+              <button class="btn-icon run-now" data-id="${task.id}" title="${t('tipRunNow', 'Run Check Now')}">▶</button>
+            ` : ''}
+            <button class="btn-icon" data-id="${task.id}" data-action="export" title="${t('tipExport', 'Export Script')}">⇣</button>
+          </div>
+          <div class="footer-actions">
+            <button class="btn-icon" data-id="${task.id}" data-action="duplicate" title="${t('tipDuplicate', 'Duplicate Task')}">📋</button>
+            <button class="btn-icon" data-id="${task.id}" data-action="edit" title="${t('tipEdit', 'Edit')}">✎</button>
+            <button class="btn-icon delete" data-id="${task.id}" data-action="delete" title="${t('tipDelete', 'Delete')}">🗑</button>
+          </div>
+        </div>
+      `;
+      
+      tasksGrid.appendChild(card);
+    });
+    
+    // 绑定列表每一项卡片的操作按钮事件
+    tasksGrid.querySelectorAll('.run-now').forEach(btn => {
+      btn.onclick = (e) => {
+        const id = e.target.getAttribute('data-id');
+        triggerRunTask(id, e.target);
+      };
+    });
+    
+    tasksGrid.querySelectorAll('[data-action="export"]').forEach(btn => {
+      btn.onclick = (e) => {
+        const id = e.currentTarget.getAttribute('data-id');
+        showExportModal(id);
+      };
+    });
+    
+    tasksGrid.querySelectorAll('[data-action="duplicate"]').forEach(btn => {
+      btn.onclick = (e) => {
+        const id = e.currentTarget.getAttribute('data-id');
+        duplicateTask(id);
+      };
+    });
+    
+    tasksGrid.querySelectorAll('[data-action="edit"]').forEach(btn => {
+      btn.onclick = (e) => {
+        const id = e.currentTarget.getAttribute('data-id');
+        showTaskModal(id);
+      };
+    });
+    
+    tasksGrid.querySelectorAll('[data-action="delete"]').forEach(btn => {
+      btn.onclick = (e) => {
+        const id = e.currentTarget.getAttribute('data-id');
+        confirmDeleteTask(id);
+      };
+    });
+  }
+  
+  /**
+   * 更新顶部指标卡片数值
+   */
+  function updateMetrics() {
+    metricTotal.innerText = allTasks.length;
+    
+    const healthy = allTasks.filter(t => t.enabled && t.lastStatus === 'success').length;
+    metricHealthy.innerText = healthy;
+    
+    const failed = allTasks.filter(t => t.enabled && t.lastStatus === 'error').length;
+    metricFailed.innerText = failed;
+  }
+  
+  /**
+   * 渲染日志信息到控制台盒子中
+   */
+  function renderLogs(logs) {
+    if (logs.length === 0) {
+      logsConsole.innerHTML = `<div style="color:var(--text-muted)">Console initialized. Waiting for activity...</div>`;
+      return;
+    }
+    
+    logsConsole.innerHTML = logs.map(log => {
+      const timeStr = formatDateShort(log.timestamp);
+      return `<div class="console-line ${log.type}">
+         <span class="time">[${timeStr}]</span>
+         <span class="task">[${escapeHtml(log.taskName)}]</span>
+         <span class="message">${escapeHtml(log.message)}</span>
+      </div>`;
+    }).join('');
+  }
+  
+  // 清空控制台显示（仅前端清空，不影响数据库）
+  function clearConsoleLogs() {
+    logsConsole.innerHTML = `<div style="color:var(--text-muted)">Console cleared.</div>`;
+  }
+  
+  /**
+   * 手动触发检测并更新 DNS 记录
+   */
+  async function triggerRunTask(id, buttonEl) {
+    buttonEl.disabled = true;
+    buttonEl.innerText = '⏳';
+    
+    try {
+      const res = await fetch(`/api/tasks/${id}/run`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        // 更新成功
+      } else {
+        alert(`${t('errRunTask', 'Error running task')}: ${data.error}`);
+      }
+    } catch (e) {
+      alert(`${t('errNetWork', 'Network error')}: ${e.message}`);
+    } finally {
+      buttonEl.disabled = false;
+      buttonEl.innerText = '▶';
+      fetchTasks();
+      fetchLogs();
+    }
+  }
+  
+  /**
+   * 删除解析任务
+   */
+  async function confirmDeleteTask(id) {
+    const task = allTasks.find(t => t.id === id);
+    if (!task) return;
+    const confirmMessage = t('confirmDelete', 'Are you sure you want to delete task "{name}"?').replace('{name}', task.name);
+    if (confirm(confirmMessage)) {
+      try {
+        const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          fetchTasks();
+          fetchLogs();
+        } else {
+          alert('Failed to delete task.');
+        }
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+  }
+ 
+  /**
+   * 快捷复制复制该解析任务配置
+   */
+  async function duplicateTask(id) {
+    const task = allTasks.find(t => t.id === id);
+    if (!task) return;
+ 
+    const suffix = currentLang === 'zh' ? '_复制' : '_copy';
+    const payload = {
+      ...task,
+      id: undefined,
+      name: `${task.name}${suffix}`,
+      lastIp: '',
+      lastChecked: '',
+      lastStatus: 'info',
+      lastMessage: 'Task duplicated',
+      clientKey: undefined // 服务端将自动生成新的 clientKey
+    };
+ 
+    try {
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+ 
+      if (res.ok) {
+        fetchTasks();
+        fetchLogs();
+      } else {
+        const data = await res.json();
+        alert(`Failed to duplicate task: ${data.error}`);
+      }
+    } catch (e) {
+      alert(`${t('errNetWork', 'Network error')}: ${e.message}`);
+    }
+  }
+  
+  /**
+   * 任务配置表单隐藏/显示联动逻辑
+   */
+  function toggleProviderCredentialsFields() {
+    const provider = taskProvider.value;
+    const isCf = provider === 'cloudflare';
+    
+    document.getElementById('credCloudflare').style.display = isCf ? 'block' : 'none';
+    
+    const credGeneric = document.getElementById('credGeneric');
+    if (isCf) {
+      credGeneric.style.display = 'none';
+      return;
+    }
+    
+    credGeneric.style.display = 'block';
+    const idGroup = document.getElementById('genericIdGroup');
+    const secretGroup = document.getElementById('genericSecretGroup');
+    const lblId = document.getElementById('lblGenericId');
+    const lblSecret = document.getElementById('lblGenericSecret');
+    const inputId = document.getElementById('genericId');
+    const inputSecret = document.getElementById('genericSecret');
+    
+    // 默认显示隐藏配置
+    idGroup.style.display = 'block';
+    secretGroup.style.display = 'block';
+    
+    const isZh = currentLang === 'zh';
+    
+    if (provider === 'he' || provider === 'namesilo') {
+      idGroup.style.display = 'none';
+      lblSecret.innerText = isZh ? 'API / DDNS 密钥 Key' : 'API / DDNS Key';
+      inputSecret.placeholder = isZh ? '请输入解析密钥' : 'Enter API Key or DDNS Key';
+    } else if (provider === 'callback') {
+      idGroup.style.display = 'none';
+      lblSecret.innerText = isZh ? '自定义 Webhook URL' : 'Custom Webhook URL';
+      inputSecret.placeholder = isZh ? '例如: https://api.com/update?ip={ip}' : 'e.g. https://api.com/update?ip={ip}';
+    } else if (provider === 'dnspod') {
+      lblId.innerText = isZh ? 'Token ID' : 'Token ID';
+      inputId.placeholder = isZh ? '请输入 Token ID' : 'Enter Token ID';
+      lblSecret.innerText = isZh ? 'Token Value (密钥)' : 'Token Value';
+      inputSecret.placeholder = isZh ? '请输入 Token Value' : 'Enter Token Value';
+    } else if (provider === 'noip' || provider === 'cloudns') {
+      lblId.innerText = isZh ? '用户名 Username' : 'Username';
+      inputId.placeholder = isZh ? '请输入用户名' : 'Enter Username';
+      lblSecret.innerText = isZh ? '密码 Password' : 'Password';
+      inputSecret.placeholder = isZh ? '请输入密码' : 'Enter Password';
+    } else {
+      // aliyun, huaweidns, dnscom, tencentcloud, edgeone
+      lblId.innerText = isZh ? 'AccessKey ID' : 'AccessKey ID';
+      inputId.placeholder = isZh ? '请输入 AccessKey ID' : 'Enter AccessKey ID';
+      lblSecret.innerText = isZh ? 'AccessKey Secret' : 'AccessKey Secret';
+      inputSecret.placeholder = isZh ? '请输入 AccessKey Secret' : 'Enter AccessKey Secret';
+    }
+  }
+  
+  function toggleCfAuthTypeFields() {
+    const authType = cfAuthType.value;
+    document.getElementById('cfTokenGroup').style.display = authType === 'token' ? 'block' : 'none';
+    document.getElementById('cfEmailGroup').style.display = authType === 'key' ? 'block' : 'none';
+    document.getElementById('cfKeyGroup').style.display = authType === 'key' ? 'block' : 'none';
+  }
+  
+  function toggleModeFields() {
+    const mode = taskMode.value;
+    document.getElementById('localIpSourceGroup').style.display = mode === 'local' ? 'block' : 'none';
+    document.getElementById('remoteClientInfoGroup').style.display = mode === 'remote-client' ? 'block' : 'none';
+  }
+  
+  function toggleIpSourceFields() {
+    const source = taskIpSource.value;
+    document.getElementById('ipInterfaceGroup').style.display = source === 'interface' ? 'block' : 'none';
+    document.getElementById('ipUrlGroup').style.display = source === 'url' ? 'block' : 'none';
+  }
+  
+  /**
+   * 打开新建/编辑任务的弹窗并赋初值
+   */
+  function showTaskModal(id = null) {
+    taskForm.reset();
+    
+    if (id) {
+      // 编辑任务模式
+      const task = allTasks.find(t => t.id === id);
+      if (!task) return;
+      
+      document.getElementById('modalTitle').setAttribute('data-i18n', 'modalTitleEdit');
+      document.getElementById('modalTitle').innerText = t('modalTitleEdit', 'Edit DDNS Task');
+      document.getElementById('taskId').value = task.id;
+      document.getElementById('taskName').value = task.name;
+      document.getElementById('taskMode').value = task.mode;
+      document.getElementById('taskProvider').value = task.provider;
+      document.getElementById('taskDomain').value = task.domain;
+      document.getElementById('taskRecordType').value = task.recordType;
+      document.getElementById('taskTtl').value = task.ttl;
+      document.getElementById('taskInterval').value = task.checkInterval;
+      document.getElementById('taskIpSource').value = task.ipSource;
+      document.getElementById('taskIpInterface').value = task.ipInterface;
+      document.getElementById('taskIpUrl').value = task.ipUrl;
+      document.getElementById('taskEnabled').checked = task.enabled;
+      
+      // 根据服务商读取已有的凭证并填充表单
+      if (task.provider === 'cloudflare') {
+        const hasToken = !!task.credentials.token;
+        cfAuthType.value = hasToken ? 'token' : 'key';
+        document.getElementById('cfToken').value = task.credentials.token || '';
+        document.getElementById('cfEmail').value = task.credentials.email || '';
+        document.getElementById('cfKey').value = task.credentials.key || '';
+        document.getElementById('cfZoneId').value = task.credentials.zoneId || '';
+        document.getElementById('cfProxied').checked = !!task.proxied;
+      } else {
+        document.getElementById('genericId').value = task.credentials.id || '';
+        document.getElementById('genericSecret').value = task.credentials.secret || task.credentials.token || '';
+      }
+      
+      // 显示客户端 Key
+      document.getElementById('clientKeyVal').innerText = task.clientKey || 'N/A';
+    } else {
+      // 新建任务模式
+      document.getElementById('modalTitle').setAttribute('data-i18n', 'modalTitleAdd');
+      document.getElementById('modalTitle').innerText = t('modalTitleAdd', 'Add DDNS Task');
+      document.getElementById('taskId').value = '';
+      document.getElementById('taskMode').value = 'local';
+      document.getElementById('taskProvider').value = 'cloudflare';
+      document.getElementById('cfAuthType').value = 'token';
+      document.getElementById('taskRecordType').value = 'A';
+      document.getElementById('taskTtl').value = 600;
+      document.getElementById('taskInterval').value = 5;
+      document.getElementById('taskIpSource').value = 'public';
+      document.getElementById('taskEnabled').checked = true;
+      document.getElementById('cfProxied').checked = false;
+      document.getElementById('clientKeyVal').innerText = 'Generate on save';
+    }
+    
+    // 手动触发一次表单显示状态
+    toggleProviderCredentialsFields();
+    toggleCfAuthTypeFields();
+    toggleModeFields();
+    toggleIpSourceFields();
+    
+    showModal(taskModal);
+  }
+  
+  /**
+   * 提交保存任务配置
+   */
+  async function handleTaskSubmit(e) {
+    e.preventDefault();
+    
+    const id = document.getElementById('taskId').value;
+    const provider = taskProvider.value;
+    const credentials = {};
+    
+    // 从表单读取对应服务商的凭证
+    if (provider === 'cloudflare') {
+      const isToken = cfAuthType.value === 'token';
+      if (isToken) {
+        credentials.token = document.getElementById('cfToken').value;
+      } else {
+        credentials.email = document.getElementById('cfEmail').value;
+        credentials.key = document.getElementById('cfKey').value;
+      }
+      credentials.zoneId = document.getElementById('cfZoneId').value;
+    } else {
+      credentials.id = document.getElementById('genericId').value.trim();
+      credentials.secret = document.getElementById('genericSecret').value.trim();
+      credentials.token = document.getElementById('genericSecret').value.trim();
+    }
+    
+    const payload = {
+      name: document.getElementById('taskName').value,
+      mode: taskMode.value,
+      provider,
+      credentials,
+      domain: document.getElementById('taskDomain').value.trim(),
+      recordType: document.getElementById('taskRecordType').value,
+      ttl: parseInt(document.getElementById('taskTtl').value) || 600,
+      checkInterval: parseInt(document.getElementById('taskInterval').value) || 5,
+      ipSource: taskIpSource.value,
+      ipInterface: document.getElementById('taskIpInterface').value.trim(),
+      ipUrl: document.getElementById('taskIpUrl').value.trim(),
+      enabled: document.getElementById('taskEnabled').checked,
+      proxied: provider === 'cloudflare' ? document.getElementById('cfProxied').checked : false
+    };
+    
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `/api/tasks/${id}` : '/api/tasks';
+    
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (res.ok) {
+        closeModal(taskModal);
+        fetchTasks();
+        fetchLogs();
+      } else {
+        const data = await res.json();
+        alert(`Error: ${data.error || 'Failed to save task'}`);
+      }
+    } catch (err) {
+      alert(`${t('errNetWork', 'Network error')}: ${err.message}`);
+    }
+  }
+  
+  /**
+   * 打开系统全局设置弹窗
+   */
+  async function showSettingsModal() {
+    try {
+      const res = await fetch('/api/settings');
+      const settings = await res.json();
+      document.getElementById('settingPort').value = settings.port || 8080;
+      document.getElementById('settingToken').value = settings.dashboardToken || '';
+      document.getElementById('settingScriptInfo').value = settings.scriptInfo || '';
+      showModal(settingsModal);
+    } catch (e) {
+      alert('Failed to load system settings');
+    }
+  }
+  
+  async function handleSettingsSubmit(e) {
+    e.preventDefault();
+    const payload = {
+      port: parseInt(document.getElementById('settingPort').value) || 8080,
+      dashboardToken: document.getElementById('settingToken').value,
+      scriptInfo: document.getElementById('settingScriptInfo').value
+    };
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        closeModal(settingsModal);
+        alert(t('settingsSaveSuccess', 'Settings saved. Port changes will apply upon server restart.'));
+      } else {
+        alert('Failed to save settings');
+      }
+    } catch (err) {
+      alert(`${t('errNetWork', 'Network error')}: ${err.message}`);
+    }
+  }
+  
+  /**
+   * 打开脚本导出弹窗
+   */
+  async function showExportModal(id) {
+    activeExportTaskId = id;
+    const task = allTasks.find(t => t.id === id);
+    if (!task) return;
+    
+    document.getElementById('exportDomainName').innerText = task.domain;
+    activeExportType = 'bash';
+    tabBash.classList.add('active');
+    tabPython.classList.remove('active');
+    
+    showModal(exportModal);
+    loadExportScript();
+  }
+  
+  async function toggleExportTab(type) {
+    activeExportType = type;
+    if (type === 'bash') {
+      tabBash.classList.add('active');
+      tabPython.classList.remove('active');
+    } else {
+      tabPython.classList.add('active');
+      tabBash.classList.remove('active');
+    }
+    loadExportScript();
+  }
+  
+  async function loadExportScript() {
+    const codeArea = document.getElementById('scriptCodeArea');
+    codeArea.className = activeExportType === 'bash' ? 'language-bash' : 'language-python';
+    codeArea.innerText = 'Generating standalone script...';
+    
+    try {
+      const res = await fetch(`/api/tasks/${activeExportTaskId}/export?type=${activeExportType}`);
+      if (res.ok) {
+        const content = await res.text();
+        codeArea.innerText = content;
+      } else {
+        const err = await res.json();
+        codeArea.innerText = `Error: ${err.error}`;
+      }
+    } catch (e) {
+      codeArea.innerText = `Failed to download script details: ${e.message}`;
+    }
+  }
+  
+  function copyExportedScript() {
+    const code = document.getElementById('scriptCodeArea').innerText;
+    navigator.clipboard.writeText(code).then(() => {
+      alert(t('copySuccess', 'Copied to clipboard!'));
+    });
+  }
+  
+  function downloadExportedScript() {
+    if (!activeExportTaskId) return;
+    const task = allTasks.find(t => t.id === activeExportTaskId);
+    if (!task) return;
+    
+    const ext = activeExportType === 'bash' ? 'sh' : 'py';
+    const link = document.createElement('a');
+    link.href = `/api/tasks/${activeExportTaskId}/export?type=${activeExportType}`;
+    link.download = `ddns_${task.domain}.${ext}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+  
+  // 时间格式化工具方法
+  function formatDate(isoString) {
+    const d = new Date(isoString);
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+  
+  function formatDateShort(isoString) {
+    const d = new Date(isoString);
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+  
+  function pad(num) {
+    return num.toString().padStart(2, '0');
+  }
+  
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+});

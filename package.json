@@ -1,0 +1,14 @@
+{
+  "name": "ag-ddns",
+  "version": "1.0.0",
+  "description": "A C/S DDNS system with multiple providers compatibility and script exporter.",
+  "main": "server/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.js",
+    "client": "node client/client.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

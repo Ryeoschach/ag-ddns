@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="appTitle">AG-DDNS Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body class="theme-dark">
+  <!-- 背景氛围发光元素 -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <div class="container">
+    <header class="app-header">
+      <div class="logo-area">
+        <div class="logo-icon">▲</div>
+        <div class="logo-text">
+          <h1>AG-DDNS</h1>
+          <p data-i18n="logoSub">AG-DDNS Dynamic DNS Manager</p>
+        </div>
+      </div>
+      <div class="actions-area">
+        <!-- 语言和主题选择器 -->
+        <div class="selectors-container">
+          <select id="langSelect" class="select-small">
+            <option value="en">English</option>
+            <option value="zh">简体中文</option>
+          </select>
+          <select id="themeSelect" class="select-small">
+            <option value="system" data-i18n="themeAuto">🌓 Auto</option>
+            <option value="light" data-i18n="themeLight">☀️ Light</option>
+            <option value="dark" data-i18n="themeDark">🌙 Dark</option>
+          </select>
+        </div>
+        
+        <button id="btnNewTask" class="btn btn-primary">
+          <span class="icon">+</span> <span data-i18n="btnNewTask">New DDNS Task</span>
+        </button>
+        <button id="btnSettings" class="btn btn-secondary">
+          <span class="icon">⚙</span> <span data-i18n="btnSettings">Settings</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 运行指标状态栏 -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <h3 data-i18n="metricTotal">Total Tasks</h3>
+        <p id="metricTotal">0</p>
+      </div>
+      <div class="metric-card success">
+        <h3 data-i18n="metricHealthy">Active / Healthy</h3>
+        <p id="metricHealthy">0</p>
+      </div>
+      <div class="metric-card error">
+        <h3 data-i18n="metricFailed">Failed / Offline</h3>
+        <p id="metricFailed">0</p>
+      </div>
+    </section>
+
+    <!-- 域名任务列表 -->
+    <main class="tasks-section">
+      <div class="section-header">
+        <h2 data-i18n="secTasksTitle">Monitored DNS Records</h2>
+        <span class="pulse-indicator"><span data-i18n="pulseLive">● Live</span></span>
+      </div>
+      <div id="tasksGrid" class="tasks-grid">
+        <!-- 由 JS 动态加载的卡片 -->
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">🗂</div>
+          <h3 data-i18n="emptyStateTitle">No DDNS Tasks Found</h3>
+          <p data-i18n="emptyStateSub">Click "New DDNS Task" to add your first domain configuration.</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- 活动日志控制台 -->
+    <section class="logs-section">
+      <div class="section-header">
+        <h2 data-i18n="secLogsTitle">Activity Console Logs</h2>
+        <button id="btnClearLogs" class="btn-text" data-i18n="btnClearLogs">Clear Console</button>
+      </div>
+      <div class="console-box">
+        <div id="logsConsole" class="console-content">
+          <!-- 实时日志内容 -->
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 任务对话框弹窗 -->
+  <div id="taskModal" class="modal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3 id="modalTitle" data-i18n="modalTitleAdd">Add DDNS Task</h3>
+        <span id="closeTaskModal" class="modal-close">&times;</span>
+      </div>
+      <form id="taskForm">
+        <input type="hidden" id="taskId">
+        
+        <div class="form-grid">
+          <div class="form-group span-2">
+            <label for="taskName" data-i18n="lblTaskName">Task Name</label>
+            <input type="text" id="taskName" required data-i18n-placeholder="phTaskName" placeholder="e.g. Home Server IPv4">
+          </div>
+          
+          <div class="form-group">
+            <label for="taskMode" data-i18n="lblOperationMode">Operation Mode</label>
+            <select id="taskMode">
+              <option value="local" data-i18n="optModeLocal">Local Mode (Server Updates)</option>
+              <option value="remote-client" data-i18n="optModeRemote">Remote Client Mode (Agent Reports)</option>
+            </select>
+            <small class="form-help" data-i18n="helpOperationMode">Local runs checks on this server. Remote expects an external client agent to report its IP.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="taskProvider" data-i18n="lblDnsProvider">DNS Provider</label>
+            <select id="taskProvider">
+              <option value="cloudflare">Cloudflare</option>
+              <option value="aliyun">Aliyun (Alidns)</option>
+              <option value="dnspod">DNSPod (Tencent)</option>
+              <option value="huaweidns">Huawei Cloud (华为云)</option>
+            </select>
+          </div>
+
+          <!-- 根据域名服务商动态显示的凭证框 -->
+          <!-- Cloudflare 配置字段 -->
+          <div id="credCloudflare" class="provider-fields span-2">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="cfAuthType" data-i18n="lblCfAuthMethod">Auth Method</label>
+                <select id="cfAuthType">
+                  <option value="token" data-i18n="optCfToken">API Token (Bearer)</option>
+                  <option value="key" data-i18n="optCfGlobal">Global API Key</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="cfZoneId" data-i18n="lblCfZoneId">Zone ID (Optional)</label>
+                <input type="text" id="cfZoneId" data-i18n-placeholder="phCfZoneId" placeholder="Auto-detected if left empty">
+              </div>
+              <div class="form-group span-2" id="cfTokenGroup">
+                <label for="cfToken" data-i18n="lblCfToken">API Token</label>
+                <input type="password" id="cfToken" data-i18n-placeholder="phCfToken" placeholder="Enter Cloudflare API Token">
+              </div>
+              <div class="form-group" id="cfEmailGroup" style="display:none;">
+                <label for="cfEmail" data-i18n="lblCfEmail">Account Email</label>
+                <input type="email" id="cfEmail" data-i18n-placeholder="phCfEmail" placeholder="user@example.com">
+              </div>
+              <div class="form-group" id="cfKeyGroup" style="display:none;">
+                <label for="cfKey" data-i18n="lblCfGlobalKey">Global API Key</label>
+                <input type="password" id="cfKey" data-i18n-placeholder="phCfGlobalKey" placeholder="Enter Global API Key">
+              </div>
+              <div class="form-group span-2">
+                <label class="switch-container">
+                  <input type="checkbox" id="cfProxied">
+                  <span class="switch-label" data-i18n="lblCfProxied">Cloudflare CDN Proxy (Proxied)</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 通用 API 凭证配置字段 -->
+          <div id="credGeneric" class="provider-fields span-2" style="display:none;">
+            <div class="form-grid">
+              <div class="form-group" id="genericIdGroup">
+                <label for="genericId" id="lblGenericId">AccessKey ID</label>
+                <input type="text" id="genericId" placeholder="ID or Username">
+              </div>
+              <div class="form-group" id="genericSecretGroup">
+                <label for="genericSecret" id="lblGenericSecret">AccessKey Secret</label>
+                <input type="password" id="genericSecret" placeholder="Secret Key or Token">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="taskDomain" data-i18n="lblDomainName">Domain Name</label>
+            <input type="text" id="taskDomain" required data-i18n-placeholder="phDomainName" placeholder="e.g. server.example.com">
+          </div>
+
+          <div class="form-group">
+            <label for="taskRecordType" data-i18n="lblRecordType">Record Type</label>
+            <select id="taskRecordType">
+              <option value="A">A (IPv4)</option>
+              <option value="AAAA">AAAA (IPv6)</option>
+              <option value="CNAME">CNAME</option>
+              <option value="TXT">TXT</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="taskTtl" data-i18n="lblTtl">TTL (Seconds)</label>
+            <input type="number" id="taskTtl" min="1" data-i18n-placeholder="phTtl" placeholder="e.g. 600">
+          </div>
+
+          <div class="form-group">
+            <label for="taskInterval" data-i18n="lblCheckInterval">Check Interval (Minutes)</label>
+            <input type="number" id="taskInterval" min="1" data-i18n-placeholder="phCheckInterval" placeholder="e.g. 5">
+          </div>
+
+          <!-- 本地运行模式 IP 获取方式 -->
+          <div id="localIpSourceGroup" class="form-group span-2">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="taskIpSource" data-i18n="lblIpSource">IP Source</label>
+                <select id="taskIpSource">
+                  <option value="public" data-i18n="optIpPublic">Public IP (Auto APIs)</option>
+                  <option value="interface" data-i18n="optIpInterface">Local Network Interface</option>
+                  <option value="url" data-i18n="optIpUrl">Custom HTTP URL</option>
+                </select>
+              </div>
+              
+              <div class="form-group" id="ipInterfaceGroup" style="display:none;">
+                <label for="taskIpInterface" data-i18n="lblInterfaceName">Interface Name</label>
+                <input type="text" id="taskIpInterface" placeholder="e.g. eth0, en0">
+              </div>
+
+              <div class="form-group" id="ipUrlGroup" style="display:none;">
+                <label for="taskIpUrl" data-i18n="lblCustomCheckUrl">Custom Check URL</label>
+                <input type="url" id="taskIpUrl" placeholder="https://api.ipify.org">
+              </div>
+            </div>
+          </div>
+
+          <!-- 客户端上报模式配置信息 -->
+          <div id="remoteClientInfoGroup" class="form-group span-2" style="display:none;">
+            <div class="client-info-box">
+              <h4 data-i18n="lblClientRegKey">Remote Client Registration Key</h4>
+              <p class="client-key-display"><code id="clientKeyVal">Generate on save</code> <button type="button" id="btnCopyKey" class="btn-small" data-i18n="btnCopyKey">Copy Key</button></p>
+              <p class="client-info-help" data-i18n="helpClientKey">Provide this key to your Node.js agent client config so it can authenticate reports.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <div class="footer-left">
+            <label class="switch-container">
+              <input type="checkbox" id="taskEnabled" checked>
+              <span class="switch-label" data-i18n="lblEnableTask">Enable Task</span>
+            </label>
+          </div>
+          <div class="footer-right">
+            <button type="button" id="btnCancelTask" class="btn btn-secondary" data-i18n="btnCancel">Cancel</button>
+            <button type="submit" class="btn btn-primary" data-i18n="btnSaveTask">Save Task</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 系统配置面板 -->
+  <div id="settingsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 data-i18n="settingsTitle">System Settings</h3>
+        <span id="closeSettingsModal" class="modal-close">&times;</span>
+      </div>
+      <form id="settingsForm">
+        <div class="form-group">
+          <label for="settingPort" data-i18n="lblDashboardPort">Dashboard Port</label>
+          <input type="number" id="settingPort" required placeholder="8080">
+          <small class="form-help" data-i18n="helpDashboardPort">Requires server restart to apply changes.</small>
+        </div>
+        <div class="form-group">
+          <label for="settingToken" data-i18n="lblDashboardToken">Dashboard Secret Token</label>
+          <input type="text" id="settingToken" required placeholder="ADMIN">
+          <small class="form-help" data-i18n="helpDashboardToken">Protects API accesses. Save this token securely.</small>
+        </div>
+        <div class="form-group">
+          <label for="settingScriptInfo" data-i18n="lblSettingScriptInfo">Custom Script Header Info / License</label>
+          <textarea id="settingScriptInfo" rows="4" placeholder="e.g. Author: John Doe&#10;License: MIT" style="font-family: var(--font-mono); font-size: 0.8rem; background-color: var(--input-bg); border: 2px solid var(--panel-border); color: var(--text-color); outline: none; padding: 0.6rem; width: 100%; border-radius: 0; resize: vertical;"></textarea>
+          <small class="form-help" data-i18n="helpSettingScriptInfo">This custom text will be prepended as comments at the top of generated scripts.</small>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="btnCancelSettings" class="btn btn-secondary" data-i18n="btnCancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" data-i18n="btnSaveSettings">Save Settings</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 脚本导出面板 -->
+  <div id="exportModal" class="modal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3 data-i18n="exportTitle">Export Standalone Script</h3>
+        <span id="closeExportModal" class="modal-close">&times;</span>
+      </div>
+      <div class="export-body">
+        <p data-i18n="exportSub">Export a self-contained, lightweight, zero-dependency script pre-filled with credentials for domain:</p>
+        <h4 id="exportDomainName" class="domain-heading">domain.com</h4>
+        
+        <div class="tab-container">
+          <button id="tabBash" class="tab-btn active" data-i18n="tabBash">Bash Script (.sh)</button>
+          <button id="tabPython" class="tab-btn" data-i18n="tabPython">Python Script (.py)</button>
+        </div>
+        
+        <div class="console-box script-box">
+          <pre><code id="scriptCodeArea" class="language-bash">Generating...</code></pre>
+        </div>
+        
+        <div class="export-actions">
+          <button id="btnCopyScript" class="btn btn-secondary" data-i18n="btnCopy">Copy to Clipboard</button>
+          <button id="btnDownloadScript" class="btn btn-primary" data-i18n="btnDownload">Download File</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
