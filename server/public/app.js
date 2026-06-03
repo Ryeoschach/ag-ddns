@@ -437,13 +437,19 @@ document.addEventListener('DOMContentLoaded', () => {
         statusLabel = t('statusFailed', 'Failed');
       }
       
+      const domainListHtml = task.domain.split(',')
+        .map(d => d.trim())
+        .filter(Boolean)
+        .map(d => `<span class="domain-item">${escapeHtml(d)}</span>`)
+        .join('');
+
       card.innerHTML = `
         <div class="card-header">
           <div class="card-title">
             <h3>${escapeHtml(task.name)}</h3>
-            <div class="domain-name">${escapeHtml(task.domain)}</div>
+            <div class="domain-list">${domainListHtml}</div>
           </div>
-          <div style="display:flex; gap: 0.35rem;">
+          <div style="display:flex; gap: 0.35rem; flex-shrink: 0;">
             <span class="badge badge-mode">${task.mode === 'local' ? t('modeLocal', 'Local') : t('modeAgent', 'Agent')}</span>
             <span class="badge badge-status">${statusLabel}</span>
           </div>

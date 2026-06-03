@@ -479,6 +479,12 @@ body.theme-light .btn-text:hover {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 1rem;
+}
+
+.card-title {
+  flex: 1;
+  min-width: 0;
 }
 
 .card-title h3 {
@@ -488,20 +494,27 @@ body.theme-light .btn-text:hover {
   color: var(--text-color);
 }
 
-.card-title .domain-name {
-  font-size: 0.8rem;
+.domain-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+  max-width: 100%;
+}
+
+.domain-item {
+  font-size: 0.75rem;
   color: var(--text-color);
   font-family: var(--font-mono);
-  margin-top: 0.4rem;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   background-color: var(--secondary-color);
   border: 1px solid var(--panel-border);
   border-left: 3px solid var(--primary-color);
-  padding: 0.25rem 0.5rem;
+  padding: 0.15rem 0.4rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  white-space: nowrap;
 }
 
 /* Badges */
