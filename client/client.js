@@ -206,6 +206,13 @@ async function main() {
       console.error(`[警告] 无法将端口 "${cmdPort}" 应用到服务器地址 "${config.serverUrl}": ${e.message}`);
     }
   }
+
+  // 允许使用命令行参数（--interval / -i）或环境变量（INTERVAL / CHECK_INTERVAL）指定或覆盖检测及通报时间间隔
+  const cmdInterval = getArg('--interval') || getArg('-i') || process.env.INTERVAL || process.env.CHECK_INTERVAL;
+  if (cmdInterval && !isNaN(parseInt(cmdInterval))) {
+    config.checkInterval = parseInt(cmdInterval);
+    console.log(`[INFO] 命令行指定/环境变量覆盖，检测与上报间隔已更新为: ${config.checkInterval} 分钟`);
+  }
   
   if (!config.clientKey || config.clientKey === defaultConfig.clientKey) {
     console.error('[错误] 请先在 client/config.json 中配置您的 clientKey。');

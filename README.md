@@ -130,6 +130,13 @@ node client.js 9000
 
 # 方法 B：使用 PORT 环境变量启动
 PORT=9000 node client.js
+
+# 指定临时检测与上报时间间隔（单位：分钟，优先覆盖 config.json 配置）
+# 方法 A：使用命令行参数 --interval 或 -i 启动
+node client.js -i 10
+
+# 方法 B：使用 INTERVAL 环境变量启动
+INTERVAL=10 node client.js
 ```
 
 > [!TIP]
@@ -307,6 +314,13 @@ node client.js 9000
 
 # Method B: Specify via PORT environment variable
 PORT=9000 node client.js
+
+# Start with a custom check & report interval override (in minutes, overrides config.json)
+# Method A: Specify via `--interval` or `-i` CLI arguments
+node client.js -i 10
+
+# Method B: Specify via INTERVAL environment variable
+INTERVAL=10 node client.js
 ```
 
 > [!TIP]
