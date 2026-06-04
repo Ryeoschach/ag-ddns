@@ -61,6 +61,8 @@ const translations = {
     btnCopyKey: "Copy Key",
     btnResetKey: "Reset Key",
     helpClientKey: "Provide this key to your Node.js agent client config so it can authenticate reports.",
+    helpClientKeyText: "In remote mode, you need to install the client agent on the monitored device and configure this clientKey inside its config.json. The client will then automatically report its public IP to this server.",
+    helpCertKeyText: "With this dedicated client key, other systems (such as external Nginx servers or Kubernetes clusters) can securely pull and sync this certificate and private key using our API endpoint. Pull API Example:",
     lblEnableTask: "Enable Task",
     lblCfProxied: "Enable Cloudflare CDN Proxy (Proxied)",
     btnCancel: "Cancel",
@@ -189,6 +191,8 @@ const translations = {
     btnCopyKey: "复制密钥",
     btnResetKey: "重置密钥",
     helpClientKey: "请将此 Key 填入您安装在远程设备上的 node 客户端 agent 配置文件中，以便通过身份验证。",
+    helpClientKeyText: "在远程模式下，您需要在被监测的设备上运行客户端代理 (Client Agent)，并在此处获取对应的密钥填入客户端配置文件 config.json 的 clientKey 字段中。保存后，客户端即可向本服务器自动上报其公网 IP 并更新解析。",
+    helpCertKeyText: "配置该专属密钥后，其他系统（例如外部 Nginx 节点、Docker 容器或 K8s 集群）可以通过 API 定期拉取并同步此证书和私钥文件。拉取请求示例：",
     lblEnableTask: "启用此 DDNS 任务",
     lblCfProxied: "开启 Cloudflare CDN 代理 (已代理 / 橙色云朵)",
     btnCancel: "取消",
@@ -438,6 +442,23 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   };
+
+  // 帮助按钮切换显示说明
+  const btnHelpClientKey = document.getElementById('btnHelpClientKey');
+  const helpClientKeyBox = document.getElementById('helpClientKeyBox');
+  btnHelpClientKey.onclick = () => {
+    const isHidden = helpClientKeyBox.style.display === 'none';
+    helpClientKeyBox.style.display = isHidden ? 'block' : 'none';
+    btnHelpClientKey.innerText = isHidden ? '×' : '?';
+  };
+
+  const btnHelpCertKey = document.getElementById('btnHelpCertKey');
+  const helpCertKeyBox = document.getElementById('helpCertKeyBox');
+  btnHelpCertKey.onclick = () => {
+    const isHidden = helpCertKeyBox.style.display === 'none';
+    helpCertKeyBox.style.display = isHidden ? 'block' : 'none';
+    btnHelpCertKey.innerText = isHidden ? '×' : '?';
+  };
   
   // 提交表单
   taskForm.onsubmit = handleTaskSubmit;
@@ -599,6 +620,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showCertModal(id = null) {
     certForm.reset();
+    document.getElementById('helpCertKeyBox').style.display = 'none';
+    document.getElementById('btnHelpCertKey').innerText = '?';
     
     if (id) {
       const cert = allCerts.find(c => c.id === id);
@@ -1316,6 +1339,8 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function showTaskModal(id = null) {
     taskForm.reset();
+    document.getElementById('helpClientKeyBox').style.display = 'none';
+    document.getElementById('btnHelpClientKey').innerText = '?';
     
     if (id) {
       // 编辑任务模式

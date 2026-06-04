@@ -282,7 +282,18 @@
           <!-- 客户端上报模式配置信息 -->
           <div id="remoteClientInfoGroup" class="form-group span-2" style="display:none;">
             <div class="client-info-box">
-              <h4 data-i18n="lblClientRegKey">Remote Client Registration Key</h4>
+              <h4 style="display: flex; align-items: center; gap: 0.5rem;">
+                <span data-i18n="lblClientRegKey">Remote Client Registration Key</span>
+                <button type="button" class="btn-help-icon" id="btnHelpClientKey">?</button>
+              </h4>
+              <div id="helpClientKeyBox" class="help-content-box" style="display: none; margin-bottom: 1rem;">
+                <p data-i18n="helpClientKeyText">在远程模式下，您需要在被监测的设备上运行客户端代理 (Client Agent)，并在此处获取对应的密钥填入客户端配置文件 config.json 的 clientKey 字段中。保存后，客户端即可向本服务器自动上报其公网 IP 并更新解析。</p>
+                <pre><code>{
+  "serverUrl": "http://your-server-ip:8080",
+  "clientKey": "YOUR_CLIENT_KEY",
+  ...
+}</code></pre>
+              </div>
               <p class="client-key-display">
                 <code id="clientKeyVal">Generate on save</code> 
                 <span class="client-key-actions">
@@ -399,7 +410,16 @@
           <!-- 证书客户端拉取密钥配置信息 -->
           <div id="certClientInfoGroup" class="form-group span-2" style="margin-top: 0.5rem;">
             <div class="client-info-box">
-              <h4 data-i18n="lblClientRegKey">Remote Client Registration Key</h4>
+              <h4 style="display: flex; align-items: center; gap: 0.5rem;">
+                <span data-i18n="lblClientRegKey">Remote Client Registration Key</span>
+                <button type="button" class="btn-help-icon" id="btnHelpCertKey">?</button>
+              </h4>
+              <div id="helpCertKeyBox" class="help-content-box" style="display: none; margin-bottom: 1rem;">
+                <p data-i18n="helpCertKeyText">配置该专属密钥后，其他系统（例如外部 Nginx 节点、Docker 容器或 K8s 集群）可以通过 API 定期拉取并同步此证书和私钥文件。拉取请求示例：</p>
+                <pre><code style="white-space: pre-wrap;">curl -X POST -H "Content-Type: application/json" \
+  -d '{"clientKey":"YOUR_CERT_KEY"}' \
+  http://your-server:8080/api/client/certs</code></pre>
+              </div>
               <p class="client-key-display">
                 <code id="certClientKeyVal">Generate on save</code> 
                 <span class="client-key-actions">
