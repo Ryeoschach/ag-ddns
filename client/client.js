@@ -6,6 +6,10 @@
 import { promises as fs, existsSync } from 'fs';
 import path from 'path';
 import os from 'os';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execPromise = promisify(exec);
 
 // 智能判断配置文件存放路径：
 // 如果当前工作目录下有 client 目录，且 client.js 不在当前目录下（说明是在项目根目录运行），则保存在 client/ 子目录下；
@@ -21,7 +25,14 @@ const defaultConfig = {
   ipSource: 'public', // 'public' (公网获取) | 'interface' (网卡获取) | 'url' (自定义网址获取)
   ipInterface: '', // 比如 'eth0' 或 'en0'（当从网卡获取 IP 时填写）
   ipUrl: '', // 比如 'https://api.ipify.org'（当使用自定义网址获取 IP 时填写）
-  checkInterval: 5 // 每隔多少分钟检查一次
+  checkInterval: 5, // 每隔多少分钟检查一次
+  ssl: {
+    enabled: false,
+    domain: '',
+    certPath: './cert.crt',
+    keyPath: './private.key',
+    deployCommand: ''
+  }
 };
 
 const IP_SERVICES = {
@@ -179,6 +190,87 @@ async function checkAndReport(config) {
   }
 }
 
+async function checkAndRenewSsl(config) {
+  const ssl = config.ssl;
+  if (!ssl || !ssl.enabled) {
+    return;
+  }
+
+  const timeStr = new Date().toISOString();
+  console.log(`[${timeStr}] 开始进行 SSL 证书检查与拉取...`);
+
+  if (!ssl.certPath || !ssl.keyPath) {
+    console.error(`[${timeStr}] [错误] SSL 证书保存路径 (certPath / keyPath) 未配置`);
+    return;
+  }
+
+  try {
+    const fetchUrl = `${config.serverUrl.replace(/\/$/, '')}/api/client/certs`;
+    const res = await fetch(fetchUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientKey: config.clientKey,
+        domain: ssl.domain || undefined
+      }),
+      signal: AbortSignal.timeout(15000)
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || `服务器返回错误状态码 ${res.status}`);
+    }
+
+    const data = await res.json();
+    if (!data.success || !data.cert || !data.key) {
+      throw new Error('未获取到有效的证书及私钥内容');
+    }
+
+    // 比较本地证书内容是否需要更新
+    let needUpdate = false;
+    let localCert = '';
+    try {
+      localCert = await fs.readFile(ssl.certPath, 'utf-8');
+    } catch (e) {
+      needUpdate = true;
+    }
+
+    if (!needUpdate && localCert.trim() !== data.cert.trim()) {
+      needUpdate = true;
+    }
+
+    if (needUpdate) {
+      console.log(`[${timeStr}] 检测到证书已更新或本地证书缺失，正在写入本地文件...`);
+      
+      // 确保保存证书的目录存在
+      await fs.mkdir(path.dirname(ssl.certPath), { recursive: true });
+      await fs.mkdir(path.dirname(ssl.keyPath), { recursive: true });
+
+      await fs.writeFile(ssl.certPath, data.cert, 'utf-8');
+      await fs.writeFile(ssl.keyPath, data.key, 'utf-8');
+      
+      console.log(`[${timeStr}] 证书与私钥文件已成功保存到本地。`);
+
+      if (ssl.deployCommand) {
+        console.log(`[${timeStr}] 正在执行部署重载命令: "${ssl.deployCommand}"...`);
+        try {
+          const { stdout, stderr } = await execPromise(ssl.deployCommand);
+          if (stdout) console.log(`[${timeStr}] 命令输出: ${stdout.trim()}`);
+          if (stderr) console.log(`[${timeStr}] 命令错误输出: ${stderr.trim()}`);
+          console.log(`[${timeStr}] 部署命令执行完毕。`);
+        } catch (execErr) {
+          console.error(`[${timeStr}] 执行部署命令失败: ${execErr.message}`);
+        }
+      }
+    } else {
+      console.log(`[${timeStr}] 本地证书与服务端版本一致，无需更新。`);
+    }
+
+  } catch (err) {
+    console.error(`[${timeStr}] SSL 证书更新失败: ${err.message}`);
+  }
+}
+
 function getArg(opt) {
   const idx = process.argv.indexOf(opt);
   if (idx !== -1 && idx + 1 < process.argv.length) {
@@ -221,10 +313,14 @@ async function main() {
 
   // 启动时先执行一次检查
   await checkAndReport(config);
+  await checkAndRenewSsl(config);
 
   // 开启定时检查任务
   const intervalMs = config.checkInterval * 60 * 1000;
-  setInterval(() => checkAndReport(config), intervalMs);
+  setInterval(async () => {
+    await checkAndReport(config);
+    await checkAndRenewSsl(config);
+  }, intervalMs);
   console.log(`[INFO] 定时任务配置成功，每隔 ${config.checkInterval} 分钟检查一次。`);
 }
 

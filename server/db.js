@@ -8,6 +8,7 @@ const DB_FILE = path.join(DB_DIR, 'db.json');
 const defaultDb = {
   tasks: [],
   logs: [],
+  certs: [],
   settings: {
     port: 8080
   }
@@ -117,4 +118,41 @@ export async function addLog(taskId, taskName, type, message) {
 export async function getLogs(limit = 100) {
   const db = await loadDb();
   return db.logs.slice(0, limit);
+}
+
+export async function getCerts() {
+  const db = await loadDb();
+  if (!db.certs) db.certs = [];
+  return db.certs;
+}
+
+export async function getCert(id) {
+  const db = await loadDb();
+  if (!db.certs) db.certs = [];
+  return db.certs.find(c => c.id === id);
+}
+
+export async function saveCert(cert) {
+  const db = await loadDb();
+  if (!db.certs) db.certs = [];
+  if (!cert.id) {
+    cert.id = 'cert_' + Math.random().toString(36).substring(2, 11);
+    db.certs.push(cert);
+  } else {
+    const idx = db.certs.findIndex(c => c.id === cert.id);
+    if (idx !== -1) {
+      db.certs[idx] = { ...db.certs[idx], ...cert };
+    } else {
+      db.certs.push(cert);
+    }
+  }
+  await saveDb();
+  return cert;
+}
+
+export async function deleteCert(id) {
+  const db = await loadDb();
+  if (!db.certs) db.certs = [];
+  db.certs = db.certs.filter(c => c.id !== id);
+  await saveDb();
 }

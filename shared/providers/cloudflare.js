@@ -93,3 +93,51 @@ export async function updateRecord({ credentials, domain, recordType, ip, ttl, p
 
   return { success: true, ip, updated: true, msg: record ? 'Record updated' : 'Record created' };
 }
+
+export async function createTxtRecord({ credentials, domain, name, value, ttl }) {
+  const headers = getHeaders(credentials);
+  const zoneId = credentials.zoneId || await getZoneId(domain, headers);
+
+  const url = `https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      type: 'TXT',
+      name,
+      content: value,
+      ttl: ttl || 60
+    })
+  });
+  const data = await res.json();
+  if (!data.success) {
+    throw new Error(`创建 Cloudflare TXT 记录失败: ${JSON.stringify(data.errors)}`);
+  }
+  return true;
+}
+
+export async function deleteTxtRecord({ credentials, domain, name }) {
+  const headers = getHeaders(credentials);
+  const zoneId = credentials.zoneId || await getZoneId(domain, headers);
+
+  const listUrl = `https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records?type=TXT&name=${encodeURIComponent(name)}`;
+  const listRes = await fetch(listUrl, { headers });
+  const listData = await listRes.json();
+  if (!listData.success) {
+    throw new Error(`查询 Cloudflare TXT 记录失败: ${JSON.stringify(listData.errors)}`);
+  }
+
+  const records = listData.result || [];
+  for (const record of records) {
+    const deleteUrl = `https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records/${record.id}`;
+    const delRes = await fetch(deleteUrl, {
+      method: 'DELETE',
+      headers
+    });
+    const delData = await delRes.json();
+    if (!delData.success) {
+      throw new Error(`删除 Cloudflare TXT 记录失败: ${JSON.stringify(delData.errors)}`);
+    }
+  }
+  return true;
+}

@@ -9,9 +9,14 @@ import {
   getLogs,
   addLog,
   getSettings,
-  saveSettings
+  saveSettings,
+  getCerts,
+  getCert,
+  saveCert,
+  deleteCert
 } from './db.js';
 import { generateBash, generatePython } from './exporter.js';
+import { issueCertificate, checkAndRenewCerts } from './acme.js';
 
 // 导入服务商适配器
 import * as cloudflare from '../shared/providers/cloudflare.js';
@@ -407,6 +412,136 @@ app.post('/api/settings', async (req, res) => {
 });
 
 /**
+ * 证书管理 API
+ */
+app.get('/api/certs', async (req, res) => {
+  const certs = await getCerts();
+  res.json(certs);
+});
+
+app.post('/api/certs', async (req, res) => {
+  const { domain, provider, credentials, email, dnsDelay, enabled, useStaging } = req.body;
+  if (!domain || !provider || !credentials) {
+    return res.status(400).json({ error: '缺少必填的证书参数' });
+  }
+
+  const newCert = {
+    domain,
+    provider,
+    credentials,
+    email: email || '',
+    dnsDelay: parseInt(dnsDelay) || 15,
+    enabled: enabled !== false,
+    useStaging: !!useStaging,
+    status: 'info',
+    lastMessage: '已保存证书配置，尚未申请',
+    lastUpdated: '',
+    expiryDate: '',
+    certContent: '',
+    keyContent: ''
+  };
+
+  const saved = await saveCert(newCert);
+  res.json(saved);
+});
+
+app.put('/api/certs/:id', async (req, res) => {
+  const existing = await getCert(req.params.id);
+  if (!existing) {
+    return res.status(404).json({ error: '未找到该证书配置' });
+  }
+
+  const updated = {
+    ...existing,
+    ...req.body,
+    id: req.params.id
+  };
+
+  const saved = await saveCert(updated);
+  res.json(saved);
+});
+
+app.delete('/api/certs/:id', async (req, res) => {
+  const existing = await getCert(req.params.id);
+  if (!existing) {
+    return res.status(404).json({ error: '未找到该证书配置' });
+  }
+  await deleteCert(req.params.id);
+  res.json({ success: true });
+});
+
+app.post('/api/certs/:id/renew', async (req, res) => {
+  const cert = await getCert(req.params.id);
+  if (!cert) {
+    return res.status(404).json({ error: '未找到该证书配置' });
+  }
+
+  // 异步执行申请流程，防止接口因 DNS 验证超时
+  issueCertificate(cert).catch(err => {
+    console.error(`手动触发申请证书失败 (${cert.domain}): ${err.message}`);
+  });
+
+  res.json({ success: true, message: '证书申请与续期任务已手动触发，请在面板中关注更新状态。' });
+});
+
+app.get('/api/certs/:id/download', async (req, res) => {
+  const cert = await getCert(req.params.id);
+  if (!cert || !cert.certContent || !cert.keyContent) {
+    return res.status(404).json({ error: '证书尚未申请成功，无法下载' });
+  }
+
+  res.json({
+    domain: cert.domain,
+    cert: cert.certContent,
+    key: cert.keyContent
+  });
+});
+
+/**
+ * 客户端证书上报与拉取接口
+ */
+app.post('/api/client/certs', async (req, res) => {
+  const { clientKey, domain } = req.body;
+  if (!clientKey) {
+    return res.status(400).json({ error: '缺少 clientKey 参数' });
+  }
+
+  const tasks = await getTasks();
+  const task = tasks.find(t => t.clientKey === clientKey);
+  if (!task) {
+    return res.status(401).json({ error: '无效的客户端安全密钥' });
+  }
+
+  const certs = await getCerts();
+  const domainsToMatch = domain ? domain.split(',').map(d => d.trim()).filter(Boolean) : [];
+  
+  const matchedCert = certs.find(c => {
+    if (c.status !== 'success') return false;
+    const certDoms = c.domain.split(',').map(d => d.trim()).filter(Boolean);
+    if (domainsToMatch.length > 0) {
+      return domainsToMatch.some(d => certDoms.includes(d));
+    }
+    const taskDoms = task.domain.split(',').map(d => d.trim()).filter(Boolean);
+    return taskDoms.some(d => certDoms.includes(d));
+  });
+
+  if (!matchedCert) {
+    return res.status(404).json({ error: '未找到匹配的 SSL 证书记录' });
+  }
+
+  res.json({
+    success: true,
+    domain: matchedCert.domain,
+    lastUpdated: matchedCert.lastUpdated,
+    expiryDate: matchedCert.expiryDate,
+    cert: matchedCert.certContent,
+    key: matchedCert.keyContent
+  });
+});
+
+let lastCertCheck = 0;
+
+/**
  * 定时检查轮询任务
  */
 async function scheduleCheck() {
@@ -433,6 +568,15 @@ async function scheduleCheck() {
         await addLog(task.id, task.name, 'error', `客户端连接超时，已超过 ${task.checkInterval * 3} 分钟未收到任何上报数据。`);
       }
     }
+  }
+
+  // 每天自动检查并续期一次证书
+  const now = Date.now();
+  if (now - lastCertCheck >= 24 * 60 * 60 * 1000) {
+    lastCertCheck = now;
+    checkAndRenewCerts().catch(err => {
+      console.error('自动续期证书扫描失败:', err.message);
+    });
   }
 }
 

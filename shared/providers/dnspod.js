@@ -91,3 +91,52 @@ export async function updateRecord({ credentials, domain, recordType, ip, ttl })
 
   return { success: true, ip, updated: true, msg: record ? 'Record updated' : 'Record created' };
 }
+
+export async function createTxtRecord({ credentials, domain, name, value, ttl }) {
+  if (!credentials.id || !credentials.token) {
+    throw new Error('DNSPod 需要 Token ID (id) 和 Token Key (token)');
+  }
+  const login_token = `${credentials.id},${credentials.token}`;
+  const { apex, subDomain } = splitDomain(name);
+
+  await requestDnspod('Record.Create', {
+    login_token,
+    format: 'json',
+    domain: apex,
+    sub_domain: subDomain,
+    record_type: 'TXT',
+    record_line: '默认',
+    value,
+    ttl: ttl || 600
+  });
+  return true;
+}
+
+export async function deleteTxtRecord({ credentials, domain, name }) {
+  if (!credentials.id || !credentials.token) {
+    throw new Error('DNSPod 需要 Token ID (id) 和 Token Key (token)');
+  }
+  const login_token = `${credentials.id},${credentials.token}`;
+  const { apex, subDomain } = splitDomain(name);
+
+  const listData = await requestDnspod('Record.List', {
+    login_token,
+    format: 'json',
+    domain: apex,
+    sub_domain: subDomain,
+    record_type: 'TXT'
+  });
+
+  const records = listData.records || [];
+  for (const record of records) {
+    if (record.name === subDomain && record.type === 'TXT') {
+      await requestDnspod('Record.Remove', {
+        login_token,
+        format: 'json',
+        domain: apex,
+        record_id: record.id
+      });
+    }
+  }
+  return true;
+}

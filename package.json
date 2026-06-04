@@ -9,6 +9,7 @@
     "client": "node client/client.js"
   },
   "dependencies": {
+    "acme-client": "^5.3.0",
     "express": "^4.19.2"
   }
 }

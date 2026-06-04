@@ -119,3 +119,33 @@ export async function updateRecord({ credentials, domain, recordType, ip, ttl })
 
   return { success: true, ip, updated: true, msg: record ? 'Record updated' : 'Record created' };
 }
+
+export async function createTxtRecord({ credentials, domain, name, value, ttl }) {
+  const { apex, subDomain } = splitDomain(name);
+  await requestAliyun(credentials, 'AddDomainRecord', {
+    DomainName: apex,
+    RR: subDomain,
+    Type: 'TXT',
+    Value: value,
+    TTL: ttl || 600
+  });
+  return true;
+}
+
+export async function deleteTxtRecord({ credentials, domain, name }) {
+  const { apex, subDomain } = splitDomain(name);
+  const listData = await requestAliyun(credentials, 'DescribeDomainRecords', {
+    DomainName: apex,
+    RRKeyWord: subDomain,
+    TypeKeyWord: 'TXT'
+  });
+  const records = listData.DomainRecords && listData.DomainRecords.Record || [];
+  for (const record of records) {
+    if (record.RR === subDomain && record.Type === 'TXT') {
+      await requestAliyun(credentials, 'DeleteDomainRecord', {
+        RecordId: record.RecordId
+      });
+    }
+  }
+  return true;
+}

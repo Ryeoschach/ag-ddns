@@ -101,7 +101,28 @@ const translations = {
     copySuccess: "Copied to clipboard!",
     errRunTask: "Error running task",
     errNetWork: "Network error",
-    settingsSaveSuccess: "Settings saved. Port changes will apply upon server restart."
+    settingsSaveSuccess: "Settings saved. Port changes will apply upon server restart.",
+    tabDdnsTitle: "DDNS Tasks",
+    tabCertsTitle: "SSL Certificates",
+    secCertsTitle: "SSL Certificates",
+    btnNewCert: "New Certificate",
+    emptyCertStateTitle: "No Certificates Found",
+    emptyCertStateSub: "Click \"New Certificate\" to add your first SSL certificate configuration.",
+    certModalTitleAdd: "Add SSL Certificate",
+    certModalTitleEdit: "Edit SSL Certificate",
+    lblCertDomain: "Domain Names (comma separated)",
+    lblCertDnsProvider: "DNS Provider",
+    lblCertEmail: "ACME Email Address",
+    lblCertDnsDelay: "DNS Propagation Delay (Seconds)",
+    lblCertUseStaging: "Use Let's Encrypt Staging",
+    lblEnableCert: "Enable Auto-Renewal",
+    btnSaveCert: "Save Configuration",
+    rowExpiryDate: "Expiry Date",
+    tipRenew: "Renew Certificate Now",
+    tipDownload: "Download Cert & Key",
+    confirmDeleteCert: "Are you sure you want to delete certificate configuration for \"{domain}\"?",
+    certSaveSuccess: "Certificate configuration saved.",
+    certRenewTriggered: "Certificate renewal task has been manually triggered. Monitor the console for updates."
   },
   zh: {
     appTitle: "DDNS 管理面板",
@@ -202,7 +223,28 @@ const translations = {
     copySuccess: "已成功复制到剪贴板！",
     errRunTask: "任务执行失败",
     errNetWork: "网络请求异常",
-    settingsSaveSuccess: "设置保存成功！端口修改将在重启服务端后生效。"
+    settingsSaveSuccess: "设置保存成功！端口修改将在重启服务端后生效。",
+    tabDdnsTitle: "DDNS 任务",
+    tabCertsTitle: "SSL 证书管理",
+    secCertsTitle: "SSL 证书管理",
+    btnNewCert: "申请/托管 SSL 证书",
+    emptyCertStateTitle: "暂无 SSL 证书配置",
+    emptyCertStateSub: "点击上方“申请/托管 SSL 证书”按钮添加您的第一个证书申请配置。",
+    certModalTitleAdd: "添加 SSL 证书配置",
+    certModalTitleEdit: "编辑 SSL 证书配置",
+    lblCertDomain: "域名（多个域名用逗号分隔）",
+    lblCertDnsProvider: "DNS 服务商",
+    lblCertEmail: "ACME 邮箱地址",
+    lblCertDnsDelay: "DNS 生效等待时间 (秒)",
+    lblCertUseStaging: "使用 Let's Encrypt 测试环境 (Staging)",
+    lblEnableCert: "启用自动检查并续期",
+    btnSaveCert: "保存配置",
+    rowExpiryDate: "过期时间",
+    tipRenew: "立即申请/续期证书",
+    tipDownload: "下载证书及私钥文件",
+    confirmDeleteCert: "您确定要删除域名 \"{domain}\" 的证书配置吗？",
+    certSaveSuccess: "证书配置保存成功。",
+    certRenewTriggered: "证书申请/续期任务已手动触发，请在面板和日志中关注状态更新。"
   }
 };
 
@@ -222,6 +264,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const emptyState = document.getElementById('emptyState');
   const logsConsole = document.getElementById('logsConsole');
   const btnClearLogs = document.getElementById('btnClearLogs');
+  
+  // 证书管理元素
+  const certsGrid = document.getElementById('certsGrid');
+  const emptyCertState = document.getElementById('emptyCertState');
+  const tabDdns = document.getElementById('tabDdns');
+  const tabCerts = document.getElementById('tabCerts');
+  const btnNewCert = document.getElementById('btnNewCert');
+  const certModal = document.getElementById('certModal');
+  const certForm = document.getElementById('certForm');
+  const certProvider = document.getElementById('certProvider');
+  const certCfAuthType = document.getElementById('certCfAuthType');
   
   // 系统运行状态指标卡片
   const metricTotal = document.getElementById('metricTotal');
@@ -244,6 +297,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnCancelSettings').onclick = () => closeModal(settingsModal);
   document.getElementById('closeExportModal').onclick = () => closeModal(exportModal);
   
+  // 证书弹窗关闭按钮
+  document.getElementById('closeCertModal').onclick = () => closeModal(certModal);
+  document.getElementById('btnCancelCert').onclick = () => closeModal(certModal);
+  
   // 表单元素
   const taskForm = document.getElementById('taskForm');
   const settingsForm = document.getElementById('settingsForm');
@@ -256,6 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // 数据缓存变量
   let allTasks = [];
+  let allCerts = [];
   let activeExportTaskId = null;
   let activeExportType = 'bash'; // 或者 'python'
   
@@ -263,24 +321,33 @@ document.addEventListener('DOMContentLoaded', () => {
   applyTheme(currentTheme);
   applyLanguage(currentLang);
   fetchTasks();
+  fetchCerts();
   fetchLogs();
   
   // 每 10 秒定期拉取一次任务状态和控制台日志
   setInterval(() => {
     fetchTasks(true);
+    fetchCerts(true);
     fetchLogs();
   }, 10000);
   
   // 绑定事件监听器
   btnNewTask.onclick = () => showTaskModal();
+  btnNewCert.onclick = () => showCertModal();
   btnSettings.onclick = () => showSettingsModal();
   btnClearLogs.onclick = clearConsoleLogs;
+  
+  tabDdns.onclick = () => switchTab('ddns');
+  tabCerts.onclick = () => switchTab('certs');
   
   // 更改服务商/运行模式时，联动隐藏/显示对应表单
   taskProvider.onchange = () => toggleProviderCredentialsFields();
   cfAuthType.onchange = () => toggleCfAuthTypeFields();
   taskMode.onchange = () => toggleModeFields();
   taskIpSource.onchange = () => toggleIpSourceFields();
+  
+  certProvider.onchange = () => toggleCertProviderCredentialsFields();
+  certCfAuthType.onchange = () => toggleCertCfAuthTypeFields();
   
   // 切换语言和主题
   langSelect.onchange = () => applyLanguage(langSelect.value);
@@ -308,6 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // 提交表单
   taskForm.onsubmit = handleTaskSubmit;
+  certForm.onsubmit = handleCertSubmit;
   settingsForm.onsubmit = handleSettingsSubmit;
   
   // 导出脚本面板的标签页切换
@@ -388,6 +456,256 @@ document.addEventListener('DOMContentLoaded', () => {
       updateMetrics();
     } catch (e) {
       if (!silent) console.error(t('errNetWork', 'Network error'), e);
+    }
+  }
+
+  /**
+   * 拉取证书数据并渲染
+   */
+  async function fetchCerts(silent = false) {
+    try {
+      const res = await fetch('/api/certs');
+      allCerts = await res.json();
+      renderCerts();
+    } catch (e) {
+      if (!silent) console.error(t('errNetWork', 'Network error'), e);
+    }
+  }
+
+  let activeTab = 'ddns'; // 'ddns' or 'certs'
+
+  function switchTab(tab) {
+    activeTab = tab;
+    if (tab === 'ddns') {
+      document.getElementById('tabDdns').classList.add('active');
+      document.getElementById('tabCerts').classList.remove('active');
+      document.getElementById('ddnsContainer').style.display = 'block';
+      document.getElementById('certsContainer').style.display = 'none';
+    } else {
+      document.getElementById('tabDdns').classList.remove('active');
+      document.getElementById('tabCerts').classList.add('active');
+      document.getElementById('ddnsContainer').style.display = 'none';
+      document.getElementById('certsContainer').style.display = 'block';
+      fetchCerts();
+    }
+  }
+
+  async function triggerRenewCert(id, buttonEl) {
+    buttonEl.disabled = true;
+    buttonEl.innerText = '⏳';
+    
+    try {
+      const res = await fetch(`/api/certs/${id}/renew`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert(t('certRenewTriggered', 'Certificate renewal triggered. Monitor the console for updates.'));
+      } else {
+        alert(`Error: ${data.error}`);
+      }
+    } catch (e) {
+      alert(`${t('errNetWork', 'Network error')}: ${e.message}`);
+    } finally {
+      buttonEl.disabled = false;
+      buttonEl.innerText = '▶';
+      fetchCerts();
+      fetchLogs();
+    }
+  }
+
+  async function confirmDeleteCert(id) {
+    const cert = allCerts.find(c => c.id === id);
+    if (!cert) return;
+    const confirmMessage = t('confirmDeleteCert', 'Are you sure you want to delete certificate for "{domain}"?').replace('{domain}', cert.domain);
+    if (confirm(confirmMessage)) {
+      try {
+        const res = await fetch(`/api/certs/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          fetchCerts();
+          fetchLogs();
+        } else {
+          alert('Failed to delete certificate.');
+        }
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+  }
+
+  function showCertModal(id = null) {
+    certForm.reset();
+    
+    if (id) {
+      const cert = allCerts.find(c => c.id === id);
+      if (!cert) return;
+      
+      document.getElementById('certModalTitle').innerText = t('certModalTitleEdit', 'Edit SSL Certificate');
+      document.getElementById('certId').value = cert.id;
+      document.getElementById('certDomain').value = cert.domain;
+      document.getElementById('certProvider').value = cert.provider;
+      document.getElementById('certEmail').value = cert.email;
+      document.getElementById('certDnsDelay').value = cert.dnsDelay;
+      document.getElementById('certUseStaging').checked = cert.useStaging;
+      document.getElementById('certEnabled').checked = cert.enabled;
+      
+      if (cert.provider === 'cloudflare') {
+        const hasToken = !!cert.credentials.token;
+        certCfAuthType.value = hasToken ? 'token' : 'key';
+        document.getElementById('certCfToken').value = cert.credentials.token || '';
+        document.getElementById('certCfEmail').value = cert.credentials.email || '';
+        document.getElementById('certCfKey').value = cert.credentials.key || '';
+        document.getElementById('certCfZoneId').value = cert.credentials.zoneId || '';
+      } else {
+        document.getElementById('certGenericId').value = cert.credentials.id || '';
+        document.getElementById('certGenericSecret').value = cert.credentials.secret || cert.credentials.token || '';
+      }
+    } else {
+      document.getElementById('certModalTitle').innerText = t('certModalTitleAdd', 'Add SSL Certificate');
+      document.getElementById('certId').value = '';
+      document.getElementById('certProvider').value = 'cloudflare';
+      document.getElementById('certCfAuthType').value = 'token';
+      document.getElementById('certDnsDelay').value = 15;
+      document.getElementById('certUseStaging').checked = true;
+      document.getElementById('certEnabled').checked = true;
+    }
+    
+    toggleCertProviderCredentialsFields();
+    toggleCertCfAuthTypeFields();
+    showModal(certModal);
+  }
+
+  async function handleCertSubmit(e) {
+    e.preventDefault();
+    
+    const id = document.getElementById('certId').value;
+    const provider = certProvider.value;
+    const credentials = {};
+    
+    if (provider === 'cloudflare') {
+      const isToken = certCfAuthType.value === 'token';
+      if (isToken) {
+        credentials.token = document.getElementById('certCfToken').value;
+      } else {
+        credentials.email = document.getElementById('certCfEmail').value;
+        credentials.key = document.getElementById('certCfKey').value;
+      }
+      credentials.zoneId = document.getElementById('certCfZoneId').value;
+    } else {
+      credentials.id = document.getElementById('certGenericId').value.trim();
+      credentials.secret = document.getElementById('certGenericSecret').value.trim();
+      credentials.token = document.getElementById('certGenericSecret').value.trim();
+    }
+    
+    const payload = {
+      domain: document.getElementById('certDomain').value.trim(),
+      provider,
+      credentials,
+      email: document.getElementById('certEmail').value.trim(),
+      dnsDelay: parseInt(document.getElementById('certDnsDelay').value) || 15,
+      useStaging: document.getElementById('certUseStaging').checked,
+      enabled: document.getElementById('certEnabled').checked
+    };
+    
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `/api/certs/${id}` : '/api/certs';
+    
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (res.ok) {
+        closeModal(certModal);
+        fetchCerts();
+        fetchLogs();
+      } else {
+        const data = await res.json();
+        alert(`Error: ${data.error || 'Failed to save certificate'}`);
+      }
+    } catch (err) {
+      alert(`${t('errNetWork', 'Network error')}: ${err.message}`);
+    }
+  }
+
+  function toggleCertProviderCredentialsFields() {
+    const provider = certProvider.value;
+    const isCf = provider === 'cloudflare';
+    
+    document.getElementById('certCredCf').style.display = isCf ? 'block' : 'none';
+    
+    const credGeneric = document.getElementById('certCredGeneric');
+    if (isCf) {
+      credGeneric.style.display = 'none';
+      return;
+    }
+    
+    credGeneric.style.display = 'block';
+    const idGroup = document.getElementById('certGenericIdGroup');
+    const secretGroup = document.getElementById('certGenericSecretGroup');
+    const lblId = document.getElementById('lblCertGenericId');
+    const lblSecret = document.getElementById('lblCertGenericSecret');
+    const inputId = document.getElementById('certGenericId');
+    const inputSecret = document.getElementById('certGenericSecret');
+    
+    idGroup.style.display = 'block';
+    secretGroup.style.display = 'block';
+    
+    const isZh = currentLang === 'zh';
+    
+    if (provider === 'dnspod') {
+      lblId.innerText = isZh ? 'Token ID' : 'Token ID';
+      inputId.placeholder = isZh ? '请输入 Token ID' : 'Enter Token ID';
+      lblSecret.innerText = isZh ? 'Token Value (密钥)' : 'Token Value';
+      inputSecret.placeholder = isZh ? '请输入 Token Value' : 'Enter Token Value';
+    } else {
+      // aliyun
+      lblId.innerText = isZh ? 'AccessKey ID' : 'AccessKey ID';
+      inputId.placeholder = isZh ? '请输入 AccessKey ID' : 'Enter AccessKey ID';
+      lblSecret.innerText = isZh ? 'AccessKey Secret' : 'AccessKey Secret';
+      inputSecret.placeholder = isZh ? '请输入 AccessKey Secret' : 'Enter AccessKey Secret';
+    }
+  }
+
+  function toggleCertCfAuthTypeFields() {
+    const authType = certCfAuthType.value;
+    document.getElementById('certCfTokenGroup').style.display = authType === 'token' ? 'block' : 'none';
+    document.getElementById('certCfEmailGroup').style.display = authType === 'key' ? 'block' : 'none';
+    document.getElementById('certCfKeyGroup').style.display = authType === 'key' ? 'block' : 'none';
+  }
+
+  async function downloadCert(id) {
+    try {
+      const res = await fetch(`/api/certs/${id}/download`);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to download certificate');
+      }
+      
+      // Download .crt
+      const crtBlob = new Blob([data.cert], { type: 'application/x-pem-file' });
+      const crtUrl = URL.createObjectURL(crtBlob);
+      const crtLink = document.createElement('a');
+      crtLink.href = crtUrl;
+      crtLink.download = `${data.domain.replace(/\*/g, 'star')}.crt`;
+      document.body.appendChild(crtLink);
+      crtLink.click();
+      document.body.removeChild(crtLink);
+      URL.revokeObjectURL(crtUrl);
+      
+      // Download .key
+      const keyBlob = new Blob([data.key], { type: 'application/x-pem-file' });
+      const keyUrl = URL.createObjectURL(keyBlob);
+      const keyLink = document.createElement('a');
+      keyLink.href = keyUrl;
+      keyLink.download = `${data.domain.replace(/\*/g, 'star')}.key`;
+      document.body.appendChild(keyLink);
+      keyLink.click();
+      document.body.removeChild(keyLink);
+      URL.revokeObjectURL(keyUrl);
+      
+    } catch (e) {
+      alert(`Download failed: ${e.message}`);
     }
   }
   
@@ -527,6 +845,122 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.onclick = (e) => {
         const id = e.currentTarget.getAttribute('data-id');
         confirmDeleteTask(id);
+      };
+    });
+  }
+
+  function renderCerts() {
+    const cards = certsGrid.querySelectorAll('.task-card');
+    cards.forEach(c => c.remove());
+    
+    if (allCerts.length === 0) {
+      emptyCertState.style.display = 'flex';
+      return;
+    }
+    
+    emptyCertState.style.display = 'none';
+    
+    allCerts.forEach(cert => {
+      const card = document.createElement('div');
+      card.className = `task-card ${cert.enabled ? cert.status : 'disabled'}`;
+      
+      const lastUpdateTime = cert.lastUpdated ? formatDate(cert.lastUpdated) : t('statusNever', 'Never');
+      const expiryTime = cert.expiryDate ? formatDate(cert.expiryDate) : t('valNa', 'N/A');
+      
+      let statusLabel = t('statusReady', 'Ready');
+      if (!cert.enabled) {
+        statusLabel = t('statusDisabled', 'Disabled');
+      } else if (cert.status === 'success') {
+        statusLabel = t('statusHealthy', 'Healthy');
+      } else if (cert.status === 'error') {
+        statusLabel = t('statusFailed', 'Failed');
+      } else if (cert.status === 'info') {
+        statusLabel = t('statusReady', 'Ready');
+      }
+      
+      const domainListHtml = cert.domain.split(',')
+        .map(d => d.trim())
+        .filter(Boolean)
+        .map(d => `<span class="domain-item">${escapeHtml(d)}</span>`)
+        .join('');
+
+      card.innerHTML = `
+        <div class="card-header">
+          <div class="card-title">
+            <h3>${escapeHtml(cert.domain.split(',')[0])}</h3>
+            <div class="domain-list">${domainListHtml}</div>
+          </div>
+          <div style="display:flex; gap: 0.35rem; flex-shrink: 0;">
+            <span class="badge badge-status">${statusLabel}</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="info-row">
+            <span class="info-label">${t('rowDnsProvider', 'DNS Provider')}</span>
+            <span class="info-value text-capitalize">${cert.provider}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">${t('lblCertEmail', 'Email')}</span>
+            <span class="info-value mono" style="font-size:0.75rem;">${escapeHtml(cert.email)}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">${t('rowExpiryDate', 'Expiry Date')}</span>
+            <span class="info-value mono text-warning" style="font-size:0.75rem;">${expiryTime}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">${t('rowLastChecked', 'Last Updated')}</span>
+            <span class="info-value">${lastUpdateTime}</span>
+          </div>
+          <div class="info-row" style="border:none;">
+            <span class="info-label">${t('rowMessage', 'Message')}</span>
+            <span class="info-value" style="font-size: 0.75rem; text-align:right; max-width: 70%; word-break:break-all;">${escapeHtml(cert.lastMessage || '')}</span>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="footer-actions">
+            ${cert.enabled ? `
+              <button class="btn-icon run-now" data-id="${cert.id}" title="${t('tipRenew', 'Renew Now')}">▶</button>
+            ` : ''}
+            ${cert.certContent && cert.keyContent ? `
+              <button class="btn-icon" data-id="${cert.id}" data-action="download" title="${t('tipDownload', 'Download')}">⇣</button>
+            ` : ''}
+          </div>
+          <div class="footer-actions">
+            <button class="btn-icon" data-id="${cert.id}" data-action="edit-cert" title="${t('tipEdit', 'Edit')}">✎</button>
+            <button class="btn-icon delete" data-id="${cert.id}" data-action="delete-cert" title="${t('tipDelete', 'Delete')}">🗑</button>
+          </div>
+        </div>
+      `;
+      
+      certsGrid.appendChild(card);
+    });
+    
+    // Bind click handlers for cert card actions
+    certsGrid.querySelectorAll('.run-now').forEach(btn => {
+      btn.onclick = (e) => {
+        const id = e.target.getAttribute('data-id');
+        triggerRenewCert(id, e.target);
+      };
+    });
+    
+    certsGrid.querySelectorAll('[data-action="download"]').forEach(btn => {
+      btn.onclick = (e) => {
+        const id = e.currentTarget.getAttribute('data-id');
+        downloadCert(id);
+      };
+    });
+    
+    certsGrid.querySelectorAll('[data-action="edit-cert"]').forEach(btn => {
+      btn.onclick = (e) => {
+        const id = e.currentTarget.getAttribute('data-id');
+        showCertModal(id);
+      };
+    });
+    
+    certsGrid.querySelectorAll('[data-action="delete-cert"]').forEach(btn => {
+      btn.onclick = (e) => {
+        const id = e.currentTarget.getAttribute('data-id');
+        confirmDeleteCert(id);
       };
     });
   }

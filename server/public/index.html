@@ -60,8 +60,14 @@
       </div>
     </section>
 
+    <!-- 主菜单 Tab 切换 -->
+    <div class="tab-container" style="margin-bottom: 0px; border-bottom: 2px solid var(--panel-border);">
+      <button id="tabDdns" class="tab-btn active" data-i18n="tabDdnsTitle">DDNS Tasks</button>
+      <button id="tabCerts" class="tab-btn" data-i18n="tabCertsTitle">SSL Certificates</button>
+    </div>
+
     <!-- 域名任务列表 -->
-    <main class="tasks-section">
+    <main class="tasks-section" id="ddnsContainer">
       <div class="section-header">
         <h2 data-i18n="secTasksTitle">Monitored DNS Records</h2>
         <span class="pulse-indicator"><span data-i18n="pulseLive">● Live</span></span>
@@ -72,6 +78,24 @@
           <div class="empty-icon">🗂</div>
           <h3 data-i18n="emptyStateTitle">No DDNS Tasks Found</h3>
           <p data-i18n="emptyStateSub">Click "New DDNS Task" to add your first domain configuration.</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- SSL 证书管理列表 -->
+    <main class="tasks-section" id="certsContainer" style="display: none;">
+      <div class="section-header">
+        <h2 data-i18n="secCertsTitle">SSL Certificates</h2>
+        <button id="btnNewCert" class="btn btn-primary">
+          <span class="icon">+</span> <span data-i18n="btnNewCert">New Certificate</span>
+        </button>
+      </div>
+      <div id="certsGrid" class="tasks-grid">
+        <!-- 由 JS 动态加载的证书卡片 -->
+        <div class="empty-state" id="emptyCertState">
+          <div class="empty-icon">🔐</div>
+          <h3 data-i18n="emptyCertStateTitle">No Certificates Found</h3>
+          <p data-i18n="emptyCertStateSub">Click "New Certificate" to add your first SSL certificate configuration.</p>
         </div>
       </div>
     </main>
@@ -244,6 +268,108 @@
           <div class="footer-right">
             <button type="button" id="btnCancelTask" class="btn btn-secondary" data-i18n="btnCancel">Cancel</button>
             <button type="submit" class="btn btn-primary" data-i18n="btnSaveTask">Save Task</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 证书配置对话框弹窗 -->
+  <div id="certModal" class="modal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3 id="certModalTitle" data-i18n="certModalTitleAdd">Add SSL Certificate</h3>
+        <span id="closeCertModal" class="modal-close">&times;</span>
+      </div>
+      <form id="certForm">
+        <input type="hidden" id="certId">
+        
+        <div class="form-grid">
+          <div class="form-group span-2">
+            <label for="certDomain" data-i18n="lblCertDomain">Domain Names (comma separated)</label>
+            <input type="text" id="certDomain" required placeholder="e.g. example.com, *.example.com">
+          </div>
+          
+          <div class="form-group">
+            <label for="certProvider" data-i18n="lblCertDnsProvider">DNS Provider</label>
+            <select id="certProvider">
+              <option value="cloudflare">Cloudflare</option>
+              <option value="aliyun">Aliyun (Alidns)</option>
+              <option value="dnspod">DNSPod (Tencent)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="certEmail" data-i18n="lblCertEmail">ACME Email Address</label>
+            <input type="email" id="certEmail" required placeholder="e.g. admin@example.com">
+          </div>
+
+          <!-- Cloudflare Credentials (Cert Modal) -->
+          <div id="certCredCf" class="provider-fields span-2">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="certCfAuthType" data-i18n="lblCfAuthMethod">Auth Method</label>
+                <select id="certCfAuthType">
+                  <option value="token" data-i18n="optCfToken">API Token (Bearer)</option>
+                  <option value="key" data-i18n="optCfGlobal">Global API Key</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="certCfZoneId" data-i18n="lblCfZoneId">Zone ID (Optional)</label>
+                <input type="text" id="certCfZoneId" placeholder="Auto-detected if left empty">
+              </div>
+              <div class="form-group span-2" id="certCfTokenGroup">
+                <label for="certCfToken" data-i18n="lblCfToken">API Token</label>
+                <input type="password" id="certCfToken" placeholder="Enter Cloudflare API Token">
+              </div>
+              <div class="form-group" id="certCfEmailGroup" style="display:none;">
+                <label for="certCfEmail" data-i18n="lblCfEmail">Account Email</label>
+                <input type="email" id="certCfEmail" placeholder="user@example.com">
+              </div>
+              <div class="form-group" id="certCfKeyGroup" style="display:none;">
+                <label for="certCfKey" data-i18n="lblCfGlobalKey">Global API Key</label>
+                <input type="password" id="certCfKey" placeholder="Enter Global API Key">
+              </div>
+            </div>
+          </div>
+
+          <!-- Aliyun / DNSPod Credentials (Cert Modal) -->
+          <div id="certCredGeneric" class="provider-fields span-2" style="display:none;">
+            <div class="form-grid">
+              <div class="form-group" id="certGenericIdGroup">
+                <label for="certGenericId" id="lblCertGenericId">AccessKey ID</label>
+                <input type="text" id="certGenericId" placeholder="ID or Username">
+              </div>
+              <div class="form-group" id="certGenericSecretGroup">
+                <label for="certGenericSecret" id="lblCertGenericSecret">AccessKey Secret</label>
+                <input type="password" id="certGenericSecret" placeholder="Secret Key or Token">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="certDnsDelay" data-i18n="lblCertDnsDelay">DNS Propagation Delay (Seconds)</label>
+            <input type="number" id="certDnsDelay" min="5" value="15" placeholder="Default: 15">
+          </div>
+
+          <div class="form-group span-2">
+            <label class="switch-container">
+              <input type="checkbox" id="certUseStaging" checked>
+              <span class="switch-label" data-i18n="lblCertUseStaging">Use Let's Encrypt Staging Directory (For Testing)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <div class="footer-left">
+            <label class="switch-container">
+              <input type="checkbox" id="certEnabled" checked>
+              <span class="switch-label" data-i18n="lblEnableCert">Enable Auto-Renewal</span>
+            </label>
+          </div>
+          <div class="footer-right">
+            <button type="button" id="btnCancelCert" class="btn btn-secondary" data-i18n="btnCancel">Cancel</button>
+            <button type="submit" class="btn btn-primary" data-i18n="btnSaveCert">Save Configuration</button>
           </div>
         </div>
       </form>
