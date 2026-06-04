@@ -44,22 +44,6 @@
       </div>
     </header>
 
-    <!-- 运行指标状态栏 -->
-    <section class="metrics-grid">
-      <div class="metric-card">
-        <h3 data-i18n="metricTotal">Total Tasks</h3>
-        <p id="metricTotal">0</p>
-      </div>
-      <div class="metric-card success">
-        <h3 data-i18n="metricHealthy">Active / Healthy</h3>
-        <p id="metricHealthy">0</p>
-      </div>
-      <div class="metric-card error">
-        <h3 data-i18n="metricFailed">Failed / Offline</h3>
-        <p id="metricFailed">0</p>
-      </div>
-    </section>
-
     <!-- 主菜单 Tab 切换 -->
     <div class="tab-container" style="margin-bottom: 0px; border-bottom: 2px solid var(--panel-border);">
       <button id="tabDdns" class="tab-btn active" data-i18n="tabDdnsTitle">DDNS Tasks</button>
@@ -68,6 +52,22 @@
 
     <!-- 域名任务列表 -->
     <main class="tasks-section" id="ddnsContainer">
+      <!-- 运行指标状态栏 -->
+      <section class="metrics-grid" style="margin-bottom: 1.5rem;">
+        <div class="metric-card">
+          <h3 data-i18n="metricTotal">Total Tasks</h3>
+          <p id="metricTotal">0</p>
+        </div>
+        <div class="metric-card success">
+          <h3 data-i18n="metricHealthy">Active / Healthy</h3>
+          <p id="metricHealthy">0</p>
+        </div>
+        <div class="metric-card error">
+          <h3 data-i18n="metricFailed">Failed / Offline</h3>
+          <p id="metricFailed">0</p>
+        </div>
+      </section>
+
       <div class="section-header">
         <h2 data-i18n="secTasksTitle">Monitored DNS Records</h2>
         <span class="pulse-indicator"><span data-i18n="pulseLive">● Live</span></span>
