@@ -340,12 +340,12 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchCerts();
   fetchLogs();
   
-  // 每 10 秒定期拉取一次任务状态和控制台日志
+  // 每 3 秒定期拉取一次任务状态和控制台日志，提供高响应度的自动刷新体验
   setInterval(() => {
     fetchTasks(true);
     fetchCerts(true);
     fetchLogs();
-  }, 10000);
+  }, 3000);
   
   // 绑定事件监听器
   btnNewTask.onclick = () => showTaskModal();
@@ -536,27 +536,33 @@ document.addEventListener('DOMContentLoaded', () => {
    * 拉取任务数据并渲染
    */
   async function fetchTasks(silent = false) {
+    let data;
     try {
       const res = await fetch('/api/tasks');
-      allTasks = await res.json();
-      renderTasks();
-      updateMetrics();
+      data = await res.json();
     } catch (e) {
       if (!silent) console.error(t('errNetWork', 'Network error'), e);
+      return;
     }
+    allTasks = data;
+    renderTasks();
+    updateMetrics();
   }
 
   /**
    * 拉取证书数据并渲染
    */
   async function fetchCerts(silent = false) {
+    let data;
     try {
       const res = await fetch('/api/certs');
-      allCerts = await res.json();
-      renderCerts();
+      data = await res.json();
     } catch (e) {
       if (!silent) console.error(t('errNetWork', 'Network error'), e);
+      return;
     }
+    allCerts = data;
+    renderCerts();
   }
 
   let activeTab = 'ddns'; // 'ddns' or 'certs'
