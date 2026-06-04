@@ -25,6 +25,11 @@ AG-DDNS 是一个轻量级、无依赖的客户端/服务端（C/S）架构动�
 *   **多服务商支持**：全面兼容 **Cloudflare**、**阿里云**、**腾讯云 (DNSPod)**、**华为云**、**HE.net**、**NameSilo**、**No-IP**、**ClouDNS**、**DNS.com**，以及支持自定义 Webhook 回调（Callback）。
 *   **免依赖脚本导出**：支持将配置一键导出为纯净的独立脚本（Python 或 Bash），支持自动本地写日志（保存至同级目录 `ddns.log`），适合嵌入路由器、NAS 或直接挂载在 `crontab` 中运行。
 *   **极佳的安全防噪**：内置 IP 变动对比缓存，只有 IP 真实变化时才会触发域名服务商 API，同时在代理模式下如果客户端超时未上报，服务端会自动报警记录日志。
+*   **SSL 证书自动申请与续期 (DNS-01 ACME)**：
+    *   内置 Let's Encrypt / ZeroSSL 证书自动申请与托管服务。
+    *   支持 DNS-01 验证流程，目前自动适配 Cloudflare、阿里云、DNSPod 的 DNS 接口，自动添加/清理挑战验证记录。
+    *   定期轮询检测证书状态，在证书过期前 30 天内自动触发续期，确保零中断。
+    *   客户端 Agent 支持安全自动拉取最新的 `.crt` 与 `.key` 文件，并在本地自动执行重载指令（例如 `nginx -s reload`）。
 
 ---
 
@@ -109,9 +114,22 @@ node client.js
   "ipSource": "public",
   "ipInterface": "",
   "ipUrl": "",
-  "checkInterval": 5
+  "checkInterval": 5,
+  "ssl": {
+    "enabled": false,
+    "domain": "",
+    "certPath": "./cert.crt",
+    "keyPath": "./private.key",
+    "deployCommand": "nginx -s reload"
+  }
 }
 ```
+
+*   **`ssl` 配置** 说明：
+    *   `enabled`：设置为 `true` 开启 SSL 证书同步及重载逻辑。
+    *   `domain`：拉取的证书域名（多个用逗号隔开），留空则由服务端根据该 `clientKey` 自动匹配。
+    *   `certPath` / `keyPath`：本地保存证书和私钥的路径。
+    *   `deployCommand`：证书更新后在本地自动执行的重载命令，可为空。
 
 *   **`ipSource`** 说明：
     *   `public`：自动查询常见公网 IP 接口（如 ipify、ident.me 等）。
@@ -209,6 +227,11 @@ AG-DDNS is a lightweight, zero-dependency client/server (C/S) dynamic DNS (DDNS)
 *   **Wide Provider Support**: Out-of-the-box support for **Cloudflare**, **Aliyun**, **Tencent Cloud (DNSPod)**, **Huawei Cloud**, **HE.net**, **NameSilo**, **No-IP**, **ClouDNS**, **DNS.com**, and custom Webhook/Callback integrations.
 *   **Dependency-Free Exporter**: Export custom Python or Bash scripts containing all necessary settings. The exported scripts run natively (e.g. via crontab) and append execution records to `ddns.log` automatically.
 *   **Smart API Saving**: Built-in cache compares current IP to the last successfully updated IP, avoiding redundant calls to DNS API endpoints. In remote client mode, the server logs a connection timeout alert if the client drops offline.
+*   **Automated SSL Certificate Manager (DNS-01 ACME)**:
+    *   Automates Let's Encrypt / ZeroSSL certificate request, validation, and renewal.
+    *   Supports DNS-01 challenge verification, currently automated for Cloudflare, Aliyun, and DNSPod.
+    *   Periodic timers check cert statuses and auto-renew them 30 days before expiration.
+    *   The client agent securely pulls renewed PEM certificate/key files and runs a customized local reload script (e.g. `nginx -s reload`).
 
 ---
 
@@ -293,9 +316,22 @@ Open the newly created `client/config.json` and configure:
   "ipSource": "public",
   "ipInterface": "",
   "ipUrl": "",
-  "checkInterval": 5
+  "checkInterval": 5,
+  "ssl": {
+    "enabled": false,
+    "domain": "",
+    "certPath": "./cert.crt",
+    "keyPath": "./private.key",
+    "deployCommand": "nginx -s reload"
+  }
 }
 ```
+
+*   **`ssl` Config** details:
+    *   `enabled`: Set to `true` to enable SSL certificate synchronization.
+    *   `domain`: Specific domain for the certificate. If left blank, it is automatically resolved by mapping task clientKey.
+    *   `certPath` / `keyPath`: Local filesystem paths where certificate and private key files should be stored.
+    *   `deployCommand`: Script/Shell command to run on host machine (like restarting web servers) after certificate file is updated.
 
 *   **`ipSource` Options**:
     *   `public`: Resolves public IP via standard lookup APIs (e.g., ipify, ident.me).
