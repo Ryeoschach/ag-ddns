@@ -288,6 +288,20 @@ app.delete('/api/tasks/:id', async (req, res) => {
 });
 
 /**
+ * 重置 DDNS 任务密钥
+ */
+app.post('/api/tasks/:id/reset-key', async (req, res) => {
+  const task = await getTask(req.params.id);
+  if (!task) {
+    return res.status(404).json({ error: '未找到该任务' });
+  }
+  task.clientKey = 'key_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+  const saved = await saveTask(task);
+  await addLog(saved.id, saved.name, 'info', '重置了客户端注册密钥 (Client Key)');
+  res.json({ success: true, clientKey: saved.clientKey });
+});
+
+/**
  * 脚本导出接口
  */
 app.get('/api/tasks/:id/export', async (req, res) => {
@@ -416,6 +430,14 @@ app.post('/api/settings', async (req, res) => {
  */
 app.get('/api/certs', async (req, res) => {
   const certs = await getCerts();
+  let modified = false;
+  for (const cert of certs) {
+    if (!cert.clientKey) {
+      cert.clientKey = 'key_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+      await saveCert(cert);
+      modified = true;
+    }
+  }
   res.json(certs);
 });
 
@@ -438,7 +460,8 @@ app.post('/api/certs', async (req, res) => {
     lastUpdated: '',
     expiryDate: '',
     certContent: '',
-    keyContent: ''
+    keyContent: '',
+    clientKey: 'key_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36)
   };
 
   const saved = await saveCert(newCert);
@@ -501,6 +524,20 @@ app.get('/api/certs/:id/download', async (req, res) => {
 });
 
 /**
+ * 重置 SSL 证书密钥
+ */
+app.post('/api/certs/:id/reset-key', async (req, res) => {
+  const cert = await getCert(req.params.id);
+  if (!cert) {
+    return res.status(404).json({ error: '未找到该证书配置' });
+  }
+  cert.clientKey = 'key_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+  const saved = await saveCert(cert);
+  await addLog(saved.id, saved.domain, 'info', '重置了证书的客户端注册密钥 (Client Key)');
+  res.json({ success: true, clientKey: saved.clientKey });
+});
+
+/**
  * 客户端证书上报与拉取接口
  */
 app.post('/api/client/certs', async (req, res) => {
@@ -509,27 +546,40 @@ app.post('/api/client/certs', async (req, res) => {
     return res.status(400).json({ error: '缺少 clientKey 参数' });
   }
 
-  const tasks = await getTasks();
-  const task = tasks.find(t => t.clientKey === clientKey);
-  if (!task) {
-    return res.status(401).json({ error: '无效的客户端安全密钥' });
-  }
-
   const certs = await getCerts();
   const domainsToMatch = domain ? domain.split(',').map(d => d.trim()).filter(Boolean) : [];
-  
-  const matchedCert = certs.find(c => {
-    if (c.status !== 'success') return false;
-    const certDoms = c.domain.split(',').map(d => d.trim()).filter(Boolean);
-    if (domainsToMatch.length > 0) {
-      return domainsToMatch.some(d => certDoms.includes(d));
+
+  // 1. 优先尝试直接用 clientKey 匹配证书本身的 key
+  let matchedCert = certs.find(c => c.clientKey === clientKey && c.status === 'success');
+
+  // 如果用证书专属 key 匹配到了，但客户端又传了 domain 参数，确认一下域名是否符合（防错）
+  if (matchedCert && domainsToMatch.length > 0) {
+    const certDoms = matchedCert.domain.split(',').map(d => d.trim()).filter(Boolean);
+    const domainOk = domainsToMatch.some(d => certDoms.includes(d));
+    if (!domainOk) {
+      matchedCert = null; // 域名不匹配，清空
     }
-    const taskDoms = task.domain.split(',').map(d => d.trim()).filter(Boolean);
-    return taskDoms.some(d => certDoms.includes(d));
-  });
+  }
+
+  // 2. 如果没匹配到，尝试兼容老模式：匹配 DDNS 任务的 clientKey，再找出该任务下域名的证书
+  if (!matchedCert) {
+    const tasks = await getTasks();
+    const task = tasks.find(t => t.clientKey === clientKey);
+    if (task) {
+      matchedCert = certs.find(c => {
+        if (c.status !== 'success') return false;
+        const certDoms = c.domain.split(',').map(d => d.trim()).filter(Boolean);
+        if (domainsToMatch.length > 0) {
+          return domainsToMatch.some(d => certDoms.includes(d));
+        }
+        const taskDoms = task.domain.split(',').map(d => d.trim()).filter(Boolean);
+        return taskDoms.some(d => certDoms.includes(d));
+      });
+    }
+  }
 
   if (!matchedCert) {
-    return res.status(404).json({ error: '未找到匹配的 SSL 证书记录' });
+    return res.status(401).json({ error: '无效的安全密钥或未找到匹配的 SSL 证书' });
   }
 
   res.json({

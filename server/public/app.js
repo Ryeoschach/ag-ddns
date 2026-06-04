@@ -59,6 +59,7 @@ const translations = {
     lblClientRegKey: "Remote Client Registration Key",
     lblGenerateOnSave: "Generate on save",
     btnCopyKey: "Copy Key",
+    btnResetKey: "Reset Key",
     helpClientKey: "Provide this key to your Node.js agent client config so it can authenticate reports.",
     lblEnableTask: "Enable Task",
     lblCfProxied: "Enable Cloudflare CDN Proxy (Proxied)",
@@ -186,6 +187,7 @@ const translations = {
     lblClientRegKey: "远程客户端注册密钥 (Client Key)",
     lblGenerateOnSave: "保存后自动生成",
     btnCopyKey: "复制密钥",
+    btnResetKey: "重置密钥",
     helpClientKey: "请将此 Key 填入您安装在远程设备上的 node 客户端 agent 配置文件中，以便通过身份验证。",
     lblEnableTask: "启用此 DDNS 任务",
     lblCfProxied: "开启 Cloudflare CDN 代理 (已代理 / 橙色云朵)",
@@ -383,6 +385,59 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
   };
+
+  // 重置 DDNS 任务密钥
+  document.getElementById('btnResetTaskKey').onclick = async () => {
+    const taskId = document.getElementById('taskId').value;
+    if (!taskId) return;
+    if (confirm(currentLang === 'zh' ? '您确定要重置此任务的客户端安全密钥吗？重置后原密钥将失效。' : 'Are you sure you want to reset the client key for this task? The old key will become invalid.')) {
+      try {
+        const res = await fetch(`/api/tasks/${taskId}/reset-key`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('clientKeyVal').innerText = data.clientKey;
+          alert(currentLang === 'zh' ? '密钥重置成功！' : 'Client key reset successfully!');
+          fetchTasks(); // 刷新列表
+        } else {
+          alert(data.error || 'Reset failed');
+        }
+      } catch (e) {
+        alert(t('errNetWork', 'Network error'));
+      }
+    }
+  };
+
+  // 复制证书拉取密钥
+  document.getElementById('btnCopyCertKey').onclick = () => {
+    const keyVal = document.getElementById('certClientKeyVal').innerText;
+    const placeholder = t('lblGenerateOnSave', 'Generate on save');
+    if (keyVal && keyVal !== 'Generate on save' && keyVal !== '保存后自动生成' && keyVal !== placeholder) {
+      navigator.clipboard.writeText(keyVal).then(() => {
+        alert(t('copySuccess', 'Copied to clipboard!'));
+      });
+    }
+  };
+
+  // 重置证书拉取密钥
+  document.getElementById('btnResetCertKey').onclick = async () => {
+    const certId = document.getElementById('certId').value;
+    if (!certId) return;
+    if (confirm(currentLang === 'zh' ? '您确定要重置此证书的客户端安全密钥吗？重置后原密钥将失效。' : 'Are you sure you want to reset the client key for this certificate? The old key will become invalid.')) {
+      try {
+        const res = await fetch(`/api/certs/${certId}/reset-key`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('certClientKeyVal').innerText = data.clientKey;
+          alert(currentLang === 'zh' ? '密钥重置成功！' : 'Client key reset successfully!');
+          fetchCerts(); // 刷新列表
+        } else {
+          alert(data.error || 'Reset failed');
+        }
+      } catch (e) {
+        alert(t('errNetWork', 'Network error'));
+      }
+    }
+  };
   
   // 提交表单
   taskForm.onsubmit = handleTaskSubmit;
@@ -569,6 +624,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('certGenericId').value = cert.credentials.id || '';
         document.getElementById('certGenericSecret').value = cert.credentials.secret || cert.credentials.token || '';
       }
+
+      // 显示证书 Key 并显示重置按钮
+      document.getElementById('certClientKeyVal').innerText = cert.clientKey || 'N/A';
+      document.getElementById('btnResetCertKey').style.display = 'inline-block';
     } else {
       document.getElementById('certModalTitle').innerText = t('certModalTitleAdd', 'Add SSL Certificate');
       document.getElementById('certId').value = '';
@@ -577,6 +636,10 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('certDnsDelay').value = 15;
       document.getElementById('certUseStaging').checked = true;
       document.getElementById('certEnabled').checked = true;
+
+      // 设置占位提示并隐藏重置按钮
+      document.getElementById('certClientKeyVal').innerText = t('lblGenerateOnSave', 'Generate on save');
+      document.getElementById('btnResetCertKey').style.display = 'none';
     }
     
     toggleCertProviderCredentialsFields();
@@ -1288,8 +1351,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('genericSecret').value = task.credentials.secret || task.credentials.token || '';
       }
       
-      // 显示客户端 Key
+      // 显示客户端 Key并显示重置按钮
       document.getElementById('clientKeyVal').innerText = task.clientKey || 'N/A';
+      document.getElementById('btnResetTaskKey').style.display = 'inline-block';
     } else {
       // 新建任务模式
       document.getElementById('modalTitle').setAttribute('data-i18n', 'modalTitleAdd');
@@ -1305,6 +1369,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('taskEnabled').checked = true;
       document.getElementById('cfProxied').checked = false;
       document.getElementById('clientKeyVal').innerText = t('lblGenerateOnSave', 'Generate on save');
+      document.getElementById('btnResetTaskKey').style.display = 'none';
     }
     
     // 手动触发一次表单显示状态

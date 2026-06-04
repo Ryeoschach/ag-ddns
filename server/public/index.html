@@ -283,7 +283,11 @@
           <div id="remoteClientInfoGroup" class="form-group span-2" style="display:none;">
             <div class="client-info-box">
               <h4 data-i18n="lblClientRegKey">Remote Client Registration Key</h4>
-              <p class="client-key-display"><code id="clientKeyVal">Generate on save</code> <button type="button" id="btnCopyKey" class="btn-small" data-i18n="btnCopyKey">Copy Key</button></p>
+              <p class="client-key-display">
+                <code id="clientKeyVal">Generate on save</code> 
+                <button type="button" id="btnCopyKey" class="btn-small" data-i18n="btnCopyKey">Copy Key</button>
+                <button type="button" id="btnResetTaskKey" class="btn-small btn-danger" style="display:none;" data-i18n="btnResetKey">Reset Key</button>
+              </p>
               <p class="client-info-help" data-i18n="helpClientKey">Provide this key to your Node.js agent client config so it can authenticate reports.</p>
             </div>
           </div>
@@ -388,6 +392,19 @@
               <input type="checkbox" id="certUseStaging" checked>
               <span class="switch-label" data-i18n="lblCertUseStaging">Use Let's Encrypt Staging Directory (For Testing)</span>
             </label>
+          </div>
+
+          <!-- 证书客户端拉取密钥配置信息 -->
+          <div id="certClientInfoGroup" class="form-group span-2" style="margin-top: 0.5rem;">
+            <div class="client-info-box">
+              <h4 data-i18n="lblClientRegKey">Remote Client Registration Key</h4>
+              <p class="client-key-display">
+                <code id="certClientKeyVal">Generate on save</code> 
+                <button type="button" id="btnCopyCertKey" class="btn-small" data-i18n="btnCopyKey">Copy Key</button>
+                <button type="button" id="btnResetCertKey" class="btn-small btn-danger" style="display:none;" data-i18n="btnResetKey">Reset Key</button>
+              </p>
+              <p class="client-info-help" data-i18n="helpClientKey">Provide this key to your Node.js agent client config so it can authenticate reports.</p>
+            </div>
           </div>
         </div>
 
