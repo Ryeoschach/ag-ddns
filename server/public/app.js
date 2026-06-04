@@ -57,6 +57,7 @@ const translations = {
     lblInterfaceName: "Interface Name",
     lblCustomCheckUrl: "Custom Check URL",
     lblClientRegKey: "Remote Client Registration Key",
+    lblGenerateOnSave: "Generate on save",
     btnCopyKey: "Copy Key",
     helpClientKey: "Provide this key to your Node.js agent client config so it can authenticate reports.",
     lblEnableTask: "Enable Task",
@@ -183,6 +184,7 @@ const translations = {
     lblInterfaceName: "网卡接口名称",
     lblCustomCheckUrl: "自定义 IP 检测网页 URL",
     lblClientRegKey: "远程客户端注册密钥 (Client Key)",
+    lblGenerateOnSave: "保存后自动生成",
     btnCopyKey: "复制密钥",
     helpClientKey: "请将此 Key 填入您安装在远程设备上的 node 客户端 agent 配置文件中，以便通过身份验证。",
     lblEnableTask: "启用此 DDNS 任务",
@@ -374,7 +376,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // 复制客户端密钥
   document.getElementById('btnCopyKey').onclick = () => {
     const keyVal = document.getElementById('clientKeyVal').innerText;
-    if (keyVal && keyVal !== 'Generate on save') {
+    const placeholder = t('lblGenerateOnSave', 'Generate on save');
+    if (keyVal && keyVal !== 'Generate on save' && keyVal !== '保存后自动生成' && keyVal !== placeholder) {
       navigator.clipboard.writeText(keyVal).then(() => {
         alert(t('copySuccess', 'Copied to clipboard!'));
       });
@@ -1301,7 +1304,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('taskIpSource').value = 'public';
       document.getElementById('taskEnabled').checked = true;
       document.getElementById('cfProxied').checked = false;
-      document.getElementById('clientKeyVal').innerText = 'Generate on save';
+      document.getElementById('clientKeyVal').innerText = t('lblGenerateOnSave', 'Generate on save');
     }
     
     // 手动触发一次表单显示状态
