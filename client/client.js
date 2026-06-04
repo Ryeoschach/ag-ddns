@@ -312,14 +312,18 @@ async function main() {
   }
 
   // 启动时先执行一次检查
-  await checkAndReport(config);
-  await checkAndRenewSsl(config);
+  await Promise.allSettled([
+    checkAndReport(config),
+    checkAndRenewSsl(config)
+  ]);
 
   // 开启定时检查任务
   const intervalMs = config.checkInterval * 60 * 1000;
   setInterval(async () => {
-    await checkAndReport(config);
-    await checkAndRenewSsl(config);
+    await Promise.allSettled([
+      checkAndReport(config),
+      checkAndRenewSsl(config)
+    ]);
   }, intervalMs);
   console.log(`[INFO] 定时任务配置成功，每隔 ${config.checkInterval} 分钟检查一次。`);
 }
