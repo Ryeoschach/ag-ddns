@@ -503,6 +503,26 @@
     </div>
   </div>
 
+  <!-- 自定义确认对话框 -->
+  <div id="confirmModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 id="confirmModalTitle" data-i18n="confirmTitle">System Confirmation</h3>
+        <span id="closeConfirmModal" class="modal-close">&times;</span>
+      </div>
+      <div class="modal-body" style="padding: 1.5rem; color: var(--text-color);">
+        <p id="confirmModalMsg" style="font-size: 0.9rem; line-height: 1.5; font-family: var(--font-sans);"></p>
+      </div>
+      <div class="modal-footer" style="justify-content: flex-end; gap: 0.75rem;">
+        <button id="btnConfirmCancel" class="btn btn-secondary" data-i18n="btnCancel">Cancel</button>
+        <button id="btnConfirmOK" class="btn btn-primary" data-i18n="btnConfirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 吐司通知容器 -->
+  <div id="toastContainer" class="toast-container"></div>
+
   <script src="app.js"></script>
 </body>
 </html>

@@ -196,6 +196,31 @@ INTERVAL=10 node client.js
 
 ---
 
+### SSL 证书自动同步集成 (Nginx / Kubernetes)
+
+如果您想在外部系统（例如 Nginx 物理机或 Kubernetes 集群）中自动拉取并应用由中心服务端申请并续期的证书，有以下两种方式进行无缝集成：
+
+#### 1. Nginx 自动同步与重载 (Bash)
+我们已在根目录生成了自动拉取与重载脚本 [sync_ssl.sh](sync_ssl.sh)。该脚本内部采用安全的 `printf` + `jq` 解析服务端返回的证书，并执行 `nginx -s reload`。
+*   **使用方式**：
+    将该脚本拷贝至运行 Nginx 的服务器上，修改其中的证书保存路径，然后将其配置进定时任务（如每日凌晨 3:00）：
+    ```bash
+    0 3 * * * /path/to/sync_ssl.sh > /dev/null 2>&1
+    ```
+
+#### 2. Kubernetes 证书热更新 CronJob
+如果您在 Kubernetes 集群中使用 TLS 证书，我们提供了 [k8s-sync-cronjob.yaml](k8s-sync-cronjob.yaml) 模板。
+它会作为一个 CronJob 运行，每天定期请求服务端的 `/api/client/certs` API，并在拉取到更新后使用 `kubectl apply` 无损热更新集群内的 `tls` 类型的 Secret。
+*   **部署步骤**：
+    1. 在集群中为 CronJob 绑定拥有 Secret 读写修补权限的 ServiceAccount（可参照模板内的说明）。
+    2. 将 `k8s-sync-cronjob.yaml` 中的 `API_URL` 替换为集群内可访问的 DDNS 服务端实际地址。
+    3. 执行部署：
+       ```bash
+       kubectl apply -f k8s-sync-cronjob.yaml
+       ```
+
+---
+
 ### 独立导出脚本使用说明
 
 在 Web 面板上配置好任务后，可以直接点击 **导出脚本** 下载 Bash 或 Python 脚本。
@@ -395,6 +420,31 @@ We also provide Docker support for the client agent, which is suitable for conta
      -v /path/to/host/ip.cache:/app/ip.cache \
      ag-ddns-client
    ```
+
+---
+
+### SSL Certificate Auto-Sync Integration (Nginx / Kubernetes)
+
+To automatically pull and apply SSL certificates renewed by the central server on external environments (such as dedicated Nginx nodes or Kubernetes clusters), you can use the following integration options:
+
+#### 1. Nginx Sync and Reload (Bash Script)
+A robust sync script [sync_ssl.sh](sync_ssl.sh) is provided in the root directory. It fetches certificates securely using `printf` + `jq` and reloads Nginx automatically.
+*   **Usage**:
+    Copy this script to your Nginx node, configure the paths where certs are saved, and set up a system cron job (e.g. daily at 3:00 AM):
+    ```bash
+    0 3 * * * /path/to/sync_ssl.sh > /dev/null 2>&1
+    ```
+
+#### 2. Kubernetes TLS Secret Auto-Update CronJob
+If you are running workloads in a Kubernetes cluster, we provide [k8s-sync-cronjob.yaml](k8s-sync-cronjob.yaml).
+This defines a CronJob that queries the `/api/client/certs` endpoint daily and dynamically patches the TLS Secret in your cluster via `kubectl apply` seamlessly.
+*   **Deployment**:
+    1. Bind a `ServiceAccount` with Secret creation and patching permissions in your namespace.
+    2. Update `API_URL` to point to your DDNS server (resolve DNS/IP from within the cluster).
+    3. Apply the YAML file:
+       ```bash
+       kubectl apply -f k8s-sync-cronjob.yaml
+       ```
 
 ---
 

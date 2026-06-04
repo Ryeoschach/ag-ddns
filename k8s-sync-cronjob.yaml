@@ -1,0 +1,63 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sync-ddns-ssl-secret
+  namespace: default
+spec:
+  schedule: "0 3 * * *" # 每天凌晨 3:00 自动检查并同步证书
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          # 确保您关联的 ServiceAccount 有权限创建、获取和修补 (create, get, patch) TLS Secret
+          # 您需要事先在 k8s 中配置好 secret-patcher-sa 及其 Role / RoleBinding
+          serviceAccountName: secret-patcher-sa 
+          restartPolicy: OnFailure
+          containers:
+          - name: sync-agent
+            image: bitnami/kubectl:latest
+            env:
+            - name: API_URL
+              value: "http://localhost:8001/api/client/certs" # 注意: 如果 DDNS 服务器在 k8s 集群外部，请将 localhost 替换为外部可达的实际 IP/域名！
+            - name: CLIENT_KEY
+              value: "key_260xuqbup97mpz4apmn"
+            - name: DOMAIN
+              value: "*.cyfee.com"
+            command:
+            - /bin/bash
+            - -c
+            - |
+              # 1. 发送 API 请求
+              RESPONSE=$(curl -s --fail -X POST -H "Content-Type: application/json" \
+                -d "{\"clientKey\":\"$CLIENT_KEY\",\"domain\":\"$DOMAIN\"}" \
+                "$API_URL")
+              
+              if [ $? -ne 0 ] || [ -z "$RESPONSE" ]; then
+                echo "Error: 无法从服务器获取证书数据，请检查服务状态或 API 链接。" >&2
+                exit 1
+              fi
+              
+              # 2. 解析证书和私钥 (使用 printf %s 安全输出，避免 echo 转义导致 jq 解析报错)
+              CERT=$(printf '%s\n' "$RESPONSE" | jq -r '.cert' 2>/dev/null)
+              KEY=$(printf '%s\n' "$RESPONSE" | jq -r '.key' 2>/dev/null)
+              
+              if [ -z "$CERT" ] || [ "$CERT" = "null" ] || [ -z "$KEY" ] || [ "$KEY" = "null" ]; then
+                echo "Error: 证书数据解析失败。服务器响应内容为:" >&2
+                printf '%s\n' "$RESPONSE" >&2
+                exit 1
+              fi
+              
+              # 3. 将证书和私钥保存至临时路径
+              echo "$CERT" > /tmp/tls.crt
+              echo "$KEY" > /tmp/tls.key
+              
+              # 4. 动态生成 Secret 并用 kubectl apply 覆盖式热更新（无损）
+              kubectl create secret tls k8s-ssl-secret \
+                --cert=/tmp/tls.crt \
+                --key=/tmp/tls.key \
+                --dry-run=client -o yaml | kubectl apply -f -
+              
+              echo "Success: Kubernetes TLS Secret 'k8s-ssl-secret' 已成功自动更新！"

@@ -103,6 +103,9 @@ const translations = {
     tipDuplicate: "Duplicate Task",
     confirmDelete: "Are you sure you want to delete DDNS task \"{name}\"?",
     copySuccess: "Copied to clipboard!",
+    keyResetSuccess: "Client key reset successfully!",
+    confirmTitle: "System Confirmation",
+    btnConfirm: "Confirm",
     errRunTask: "Error running task",
     errNetWork: "Network error",
     settingsSaveSuccess: "Settings saved. Port changes will apply upon server restart.",
@@ -233,6 +236,9 @@ const translations = {
     tipDuplicate: "复制此任务配置",
     confirmDelete: "您确定要删除 DDNS 任务 \"{name}\" 吗？",
     copySuccess: "已成功复制到剪贴板！",
+    keyResetSuccess: "密钥重置成功！",
+    confirmTitle: "系统确认",
+    btnConfirm: "确定",
     errRunTask: "任务执行失败",
     errNetWork: "网络请求异常",
     settingsSaveSuccess: "设置保存成功！端口修改将在重启服务端后生效。",
@@ -385,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const placeholder = t('lblGenerateOnSave', 'Generate on save');
     if (keyVal && keyVal !== 'Generate on save' && keyVal !== '保存后自动生成' && keyVal !== placeholder) {
       navigator.clipboard.writeText(keyVal).then(() => {
-        alert(t('copySuccess', 'Copied to clipboard!'));
+        showToast(t('copySuccess', 'Copied to clipboard!'), 'success');
       });
     }
   };
@@ -394,19 +400,20 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnResetTaskKey').onclick = async () => {
     const taskId = document.getElementById('taskId').value;
     if (!taskId) return;
-    if (confirm(currentLang === 'zh' ? '您确定要重置此任务的客户端安全密钥吗？重置后原密钥将失效。' : 'Are you sure you want to reset the client key for this task? The old key will become invalid.')) {
+    const confirmed = await showConfirm(currentLang === 'zh' ? '您确定要重置此任务的客户端安全密钥吗？重置后原密钥将失效。' : 'Are you sure you want to reset the client key for this task? The old key will become invalid.');
+    if (confirmed) {
       try {
         const res = await fetch(`/api/tasks/${taskId}/reset-key`, { method: 'POST' });
         const data = await res.json();
         if (data.success) {
           document.getElementById('clientKeyVal').innerText = data.clientKey;
-          alert(currentLang === 'zh' ? '密钥重置成功！' : 'Client key reset successfully!');
+          showToast(t('keyResetSuccess', 'Client key reset successfully!'), 'success');
           fetchTasks(); // 刷新列表
         } else {
-          alert(data.error || 'Reset failed');
+          showToast(data.error || 'Reset failed', 'error');
         }
       } catch (e) {
-        alert(t('errNetWork', 'Network error'));
+        showToast(t('errNetWork', 'Network error'), 'error');
       }
     }
   };
@@ -417,7 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const placeholder = t('lblGenerateOnSave', 'Generate on save');
     if (keyVal && keyVal !== 'Generate on save' && keyVal !== '保存后自动生成' && keyVal !== placeholder) {
       navigator.clipboard.writeText(keyVal).then(() => {
-        alert(t('copySuccess', 'Copied to clipboard!'));
+        showToast(t('copySuccess', 'Copied to clipboard!'), 'success');
       });
     }
   };
@@ -426,19 +433,20 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnResetCertKey').onclick = async () => {
     const certId = document.getElementById('certId').value;
     if (!certId) return;
-    if (confirm(currentLang === 'zh' ? '您确定要重置此证书的客户端安全密钥吗？重置后原密钥将失效。' : 'Are you sure you want to reset the client key for this certificate? The old key will become invalid.')) {
+    const confirmed = await showConfirm(currentLang === 'zh' ? '您确定要重置此证书的客户端安全密钥吗？重置后原密钥将失效。' : 'Are you sure you want to reset the client key for this certificate? The old key will become invalid.');
+    if (confirmed) {
       try {
         const res = await fetch(`/api/certs/${certId}/reset-key`, { method: 'POST' });
         const data = await res.json();
         if (data.success) {
           document.getElementById('certClientKeyVal').innerText = data.clientKey;
-          alert(currentLang === 'zh' ? '密钥重置成功！' : 'Client key reset successfully!');
+          showToast(t('keyResetSuccess', 'Client key reset successfully!'), 'success');
           fetchCerts(); // 刷新列表
         } else {
-          alert(data.error || 'Reset failed');
+          showToast(data.error || 'Reset failed', 'error');
         }
       } catch (e) {
-        alert(t('errNetWork', 'Network error'));
+        showToast(t('errNetWork', 'Network error'), 'error');
       }
     }
   };
@@ -482,6 +490,95 @@ document.addEventListener('DOMContentLoaded', () => {
   
   function closeModal(modal) {
     modal.classList.remove('active');
+  }
+
+  function showConfirm(message) {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('confirmModal');
+      const msgEl = document.getElementById('confirmModalMsg');
+      const btnCancel = document.getElementById('btnConfirmCancel');
+      const btnOK = document.getElementById('btnConfirmOK');
+      const closeBtn = document.getElementById('closeConfirmModal');
+      
+      msgEl.innerText = message;
+      
+      // Apply translation to static text in confirm modal
+      const titleEl = document.getElementById('confirmModalTitle');
+      titleEl.innerText = t('confirmTitle', 'System Confirmation');
+      btnCancel.innerText = t('btnCancel', 'Cancel');
+      btnOK.innerText = t('btnConfirm', 'Confirm');
+      
+      showModal(modal);
+      
+      const cleanUp = () => {
+        closeModal(modal);
+        btnCancel.onclick = null;
+        btnOK.onclick = null;
+        closeBtn.onclick = null;
+      };
+      
+      btnCancel.onclick = () => {
+        cleanUp();
+        resolve(false);
+      };
+      
+      closeBtn.onclick = () => {
+        cleanUp();
+        resolve(false);
+      };
+      
+      btnOK.onclick = () => {
+        cleanUp();
+        resolve(true);
+      };
+    });
+  }
+
+  function showToast(message, type = 'info', duration = 4000) {
+    const toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    // Choose icon based on type
+    let icon = '▲';
+    if (type === 'success') icon = '✔';
+    else if (type === 'error') icon = '✖';
+    else if (type === 'warning') icon = '⚠';
+
+    toast.innerHTML = `
+      <div class="toast-content">
+        <span class="toast-icon">${icon}</span>
+        <span class="toast-message">${message}</span>
+      </div>
+      <button class="toast-close">&times;</button>
+    `;
+
+    // Handle manual close
+    const closeBtn = toast.querySelector('.toast-close');
+    closeBtn.onclick = () => {
+      dismissToast(toast);
+    };
+
+    // Auto dismiss
+    const dismissTimeout = setTimeout(() => {
+      dismissToast(toast);
+    }, duration);
+
+    function dismissToast(el) {
+      clearTimeout(dismissTimeout);
+      el.classList.add('toast-fade-out');
+      el.addEventListener('transitionend', () => {
+        el.remove();
+      });
+      // Fallback in case transitionend does not fire
+      setTimeout(() => {
+        if (el.parentNode) el.remove();
+      }, 500);
+    }
+
+    toastContainer.appendChild(toast);
   }
   
   // 获取翻译词条的助手方法
@@ -591,12 +688,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch(`/api/certs/${id}/renew`, { method: 'POST' });
       const data = await res.json();
       if (data.success) {
-        alert(t('certRenewTriggered', 'Certificate renewal triggered. Monitor the console for updates.'));
+        showToast(t('certRenewTriggered', 'Certificate renewal triggered. Monitor the console for updates.'), 'success');
       } else {
-        alert(`Error: ${data.error}`);
+        showToast(`Error: ${data.error}`, 'error');
       }
     } catch (e) {
-      alert(`${t('errNetWork', 'Network error')}: ${e.message}`);
+      showToast(`${t('errNetWork', 'Network error')}: ${e.message}`, 'error');
     } finally {
       buttonEl.disabled = false;
       buttonEl.innerText = '▶';
@@ -609,17 +706,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const cert = allCerts.find(c => c.id === id);
     if (!cert) return;
     const confirmMessage = t('confirmDeleteCert', 'Are you sure you want to delete certificate for "{domain}"?').replace('{domain}', cert.domain);
-    if (confirm(confirmMessage)) {
+    const confirmed = await showConfirm(confirmMessage);
+    if (confirmed) {
       try {
         const res = await fetch(`/api/certs/${id}`, { method: 'DELETE' });
         if (res.ok) {
           fetchCerts();
           fetchLogs();
         } else {
-          alert('Failed to delete certificate.');
+          showToast('Failed to delete certificate.', 'error');
         }
       } catch (e) {
-        alert(`Error: ${e.message}`);
+        showToast(`Error: ${e.message}`, 'error');
       }
     }
   }
@@ -724,10 +822,10 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchLogs();
       } else {
         const data = await res.json();
-        alert(`Error: ${data.error || 'Failed to save certificate'}`);
+        showToast(`Error: ${data.error || 'Failed to save certificate'}`, 'error');
       }
     } catch (err) {
-      alert(`${t('errNetWork', 'Network error')}: ${err.message}`);
+      showToast(`${t('errNetWork', 'Network error')}: ${err.message}`, 'error');
     }
   }
 
@@ -808,7 +906,7 @@ document.addEventListener('DOMContentLoaded', () => {
       URL.revokeObjectURL(keyUrl);
       
     } catch (e) {
-      alert(`Download failed: ${e.message}`);
+      showToast(`Download failed: ${e.message}`, 'error');
     }
   }
   
@@ -1193,10 +1291,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success) {
         // 更新成功
       } else {
-        alert(`${t('errRunTask', 'Error running task')}: ${data.error}`);
+        showToast(`${t('errRunTask', 'Error running task')}: ${data.error}`, 'error');
       }
     } catch (e) {
-      alert(`${t('errNetWork', 'Network error')}: ${e.message}`);
+      showToast(`${t('errNetWork', 'Network error')}: ${e.message}`, 'error');
     } finally {
       buttonEl.disabled = false;
       buttonEl.innerText = '▶';
@@ -1212,17 +1310,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const task = allTasks.find(t => t.id === id);
     if (!task) return;
     const confirmMessage = t('confirmDelete', 'Are you sure you want to delete task "{name}"?').replace('{name}', task.name);
-    if (confirm(confirmMessage)) {
+    const confirmed = await showConfirm(confirmMessage);
+    if (confirmed) {
       try {
         const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
         if (res.ok) {
           fetchTasks();
           fetchLogs();
         } else {
-          alert('Failed to delete task.');
+          showToast('Failed to delete task.', 'error');
         }
       } catch (e) {
-        alert(`Error: ${e.message}`);
+        showToast(`Error: ${e.message}`, 'error');
       }
     }
   }
@@ -1258,10 +1357,10 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchLogs();
       } else {
         const data = await res.json();
-        alert(`Failed to duplicate task: ${data.error}`);
+        showToast(`Failed to duplicate task: ${data.error}`, 'error');
       }
     } catch (e) {
-      alert(`${t('errNetWork', 'Network error')}: ${e.message}`);
+      showToast(`${t('errNetWork', 'Network error')}: ${e.message}`, 'error');
     }
   }
   
@@ -1470,10 +1569,10 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchLogs();
       } else {
         const data = await res.json();
-        alert(`Error: ${data.error || 'Failed to save task'}`);
+        showToast(`Error: ${data.error || 'Failed to save task'}`, 'error');
       }
     } catch (err) {
-      alert(`${t('errNetWork', 'Network error')}: ${err.message}`);
+      showToast(`${t('errNetWork', 'Network error')}: ${err.message}`, 'error');
     }
   }
   
@@ -1488,7 +1587,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('settingScriptInfo').value = settings.scriptInfo || '';
       showModal(settingsModal);
     } catch (e) {
-      alert('Failed to load system settings');
+      showToast('Failed to load system settings', 'error');
     }
   }
   
@@ -1506,12 +1605,12 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       if (res.ok) {
         closeModal(settingsModal);
-        alert(t('settingsSaveSuccess', 'Settings saved. Port changes will apply upon server restart.'));
+        showToast(t('settingsSaveSuccess', 'Settings saved. Port changes will apply upon server restart.'), 'success');
       } else {
-        alert('Failed to save settings');
+        showToast('Failed to save settings', 'error');
       }
     } catch (err) {
-      alert(`${t('errNetWork', 'Network error')}: ${err.message}`);
+      showToast(`${t('errNetWork', 'Network error')}: ${err.message}`, 'error');
     }
   }
   
@@ -1566,7 +1665,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function copyExportedScript() {
     const code = document.getElementById('scriptCodeArea').innerText;
     navigator.clipboard.writeText(code).then(() => {
-      alert(t('copySuccess', 'Copied to clipboard!'));
+      showToast(t('copySuccess', 'Copied to clipboard!'), 'success');
     });
   }
   
