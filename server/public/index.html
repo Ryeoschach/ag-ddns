@@ -53,20 +53,22 @@
     <!-- 域名任务列表 -->
     <main class="tasks-section" id="ddnsContainer">
       <!-- 运行指标状态栏 -->
-      <section class="metrics-grid" style="margin-bottom: 1.5rem;">
-        <div class="metric-card">
-          <h3 data-i18n="metricTotal">Total Tasks</h3>
-          <p id="metricTotal">0</p>
+      <div class="summary-panel" id="ddnsSummaryPanel" style="margin-bottom: 1.5rem;">
+        <div class="summary-stats-grid">
+          <div class="summary-stat-card">
+            <h4 data-i18n="metricTotal">Total Tasks</h4>
+            <p id="metricTotal">0</p>
+          </div>
+          <div class="summary-stat-card success">
+            <h4 data-i18n="metricHealthy">Active / Healthy</h4>
+            <p id="metricHealthy">0</p>
+          </div>
+          <div class="summary-stat-card error">
+            <h4 data-i18n="metricFailed">Failed / Offline</h4>
+            <p id="metricFailed">0</p>
+          </div>
         </div>
-        <div class="metric-card success">
-          <h3 data-i18n="metricHealthy">Active / Healthy</h3>
-          <p id="metricHealthy">0</p>
-        </div>
-        <div class="metric-card error">
-          <h3 data-i18n="metricFailed">Failed / Offline</h3>
-          <p id="metricFailed">0</p>
-        </div>
-      </section>
+      </div>
 
       <div class="section-header">
         <h2 data-i18n="secTasksTitle">Monitored DNS Records</h2>
@@ -92,7 +94,7 @@
       </div>
 
       <!-- 证书到期汇总及可视化图表 -->
-      <div class="certs-summary-panel" id="certsSummaryPanel" style="display: none; margin-bottom: 1.5rem;">
+      <div class="summary-panel" id="certsSummaryPanel" style="display: none; margin-bottom: 1.5rem;">
         <div class="summary-stats-grid">
           <div class="summary-stat-card">
             <h4 data-i18n="statActive">Active Certs</h4>

@@ -1153,8 +1153,8 @@ body.theme-light .tab-btn.active::after {
   }
 }
 
-/* SSL Certificates Expiration Visual Summary Chart & Timeline styling */
-.certs-summary-panel {
+/* Summary Panel styling for both DDNS and Certs tabs */
+.summary-panel {
   background-color: var(--panel-bg);
   border: 2px solid var(--panel-border);
   box-shadow: var(--shadow);
@@ -1191,6 +1191,10 @@ body.theme-light .tab-btn.active::after {
   font-weight: 900;
   font-family: var(--font-mono);
   color: var(--neon-cyan);
+}
+
+.summary-stat-card.success p {
+  color: var(--neon-green);
 }
 
 .summary-stat-card.warning p {
