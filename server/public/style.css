@@ -39,11 +39,22 @@ body.theme-dark {
   --input-bg: #000000;
   --modal-bg: #050508;
   --grid-color: rgba(0, 240, 255, 0.035);
+  
+  /* Background glow and console text options */
+  --glow-blend: screen;
+  --glow-color-1: rgba(0, 240, 255, 0.12);
+  --glow-color-2: rgba(255, 0, 85, 0.10);
+  --console-text: #ffffff;
+  --console-time: #888888;
+  --console-task: var(--neon-yellow);
+  --console-success: var(--neon-green);
+  --console-error: var(--error-color);
+  --console-info: var(--neon-cyan);
 }
 
 /* Light Synthwave Theme Variables */
 body.theme-light {
-  --bg-color: #f7ebf0;
+  --bg-color: #e5d1dc; /* Deeper lilac/lavender background to make white panels pop! */
   --panel-bg: rgba(255, 255, 255, 0.98);
   --panel-border: var(--neon-pink);
   --secondary-color: rgba(255, 0, 85, 0.05);
@@ -52,10 +63,21 @@ body.theme-light {
   --text-muted: var(--neon-pink);
   --glow: 0 0 10px rgba(255, 0, 85, 0.2);
   --shadow: 0 5px 15px rgba(255, 0, 85, 0.1);
-  --console-bg: #14051b;
+  --console-bg: #f8eaf0; /* Light mode console bg */
   --input-bg: #ffffff;
   --modal-bg: #ffffff;
-  --grid-color: rgba(255, 0, 85, 0.012);
+  --grid-color: rgba(255, 0, 85, 0.035); /* More visible grid lines! */
+  
+  /* Background glow and console text options */
+  --glow-blend: multiply;
+  --glow-color-1: rgba(0, 240, 255, 0.07);
+  --glow-color-2: rgba(255, 0, 85, 0.06);
+  --console-text: #1e052d;
+  --console-time: #665566;
+  --console-task: #a36500;
+  --console-success: #1b8529;
+  --console-error: #cc0033;
+  --console-info: #0077bb;
 }
 
 * {
@@ -116,14 +138,14 @@ body.theme-light::after {
   filter: blur(120px);
   pointer-events: none;
   z-index: -2;
-  mix-blend-mode: screen;
+  mix-blend-mode: var(--glow-blend);
   transition: var(--transition);
 }
 
 .bg-glow-1 {
   width: 600px;
   height: 600px;
-  background-color: rgba(0, 240, 255, 0.12);
+  background-color: var(--glow-color-1);
   top: -150px;
   right: -50px;
 }
@@ -131,7 +153,7 @@ body.theme-light::after {
 .bg-glow-2 {
   width: 500px;
   height: 500px;
-  background-color: rgba(255, 0, 85, 0.1);
+  background-color: var(--glow-color-2);
   bottom: -50px;
   left: -50px;
 }
@@ -728,18 +750,18 @@ body.theme-light .btn-icon:hover {
 .console-content::-webkit-scrollbar-thumb:hover { background: var(--neon-pink); }
 
 .console-line {
-  color: #fff;
+  color: var(--console-text);
   display: flex;
   gap: 0.75rem;
   border-left: 2px solid transparent;
   padding-left: 0.5rem;
 }
 
-.console-line .time { color: #888; }
-.console-line .task { color: var(--neon-yellow); font-weight: 700; }
-.console-line.success { color: var(--neon-green); border-left-color: var(--neon-green); }
-.console-line.error { color: var(--error-color); border-left-color: var(--error-color); }
-.console-line.info { color: var(--neon-cyan); border-left-color: var(--neon-cyan); }
+.console-line .time { color: var(--console-time); }
+.console-line .task { color: var(--console-task); font-weight: 700; }
+.console-line.success { color: var(--console-success); border-left-color: var(--console-success); }
+.console-line.error { color: var(--console-error); border-left-color: var(--console-error); }
+.console-line.info { color: var(--console-info); border-left-color: var(--console-info); }
 
 /* Modals */
 .modal {
