@@ -1,5 +1,5 @@
 import acme from 'acme-client';
-import { getSettings, saveSettings, saveCert, getCerts } from './db.js';
+import { getSettings, saveSettings, saveCert, getCerts, addLog } from './db.js';
 import * as cloudflare from '../shared/providers/cloudflare.js';
 import * as aliyun from '../shared/providers/aliyun.js';
 import * as dnspod from '../shared/providers/dnspod.js';
@@ -35,12 +35,9 @@ export async function issueCertificate(cert) {
     accountKey: accountKey
   });
 
-  // 生成证书私钥
-  const certKey = await acme.forge.createPrivateKey();
-  
-  // 生成 CSR（支持用逗号分隔的多个 SAN 域名）
+  // 生成证书私钥及 CSR（支持用逗号分隔的多个 SAN 域名）
   const domains = cert.domain.split(',').map(d => d.trim()).filter(Boolean);
-  const [csr] = await acme.forge.createCsr({
+  const [certKey, csr] = await acme.forge.createCsr({
     commonName: domains[0],
     altNames: domains
   });
@@ -49,6 +46,7 @@ export async function issueCertificate(cert) {
     cert.status = 'processing';
     cert.lastMessage = '正在向 Let\'s Encrypt 提交证书订单...';
     await saveCert(cert);
+    await addLog(cert.id, cert.domain, 'info', '开始申请 SSL 证书: 向 Let\'s Encrypt 提交订单...');
 
     const certificate = await client.auto({
       csr,
@@ -65,6 +63,7 @@ export async function issueCertificate(cert) {
         
         cert.lastMessage = `正在为域名 ${authz.identifier.value} 创建 TXT 验证记录...`;
         await saveCert(cert);
+        await addLog(cert.id, cert.domain, 'info', `正在通过 DNS 接口为 ${authz.identifier.value} 增加 ACME TXT 校验记录...`);
         
         const provider = providers[cert.provider];
         if (!provider) {
@@ -82,9 +81,11 @@ export async function issueCertificate(cert) {
 
         cert.lastMessage = `已创建 TXT 记录，正在等待 DNS 刷新及生效...`;
         await saveCert(cert);
+        const delaySec = cert.dnsDelay ? parseInt(cert.dnsDelay) : 15;
+        await addLog(cert.id, cert.domain, 'info', `TXT 记录已创建，正在等待 DNS 全球生效 (延时设定: ${delaySec} 秒)...`);
 
         // 默认等待 15 秒以确保 DNS 记录在服务商全球生效
-        const delayMs = cert.dnsDelay ? parseInt(cert.dnsDelay) * 1000 : 15000;
+        const delayMs = delaySec * 1000;
         await new Promise(resolve => setTimeout(resolve, delayMs));
       },
       challengeRemoveFn: async (authz, challenge, keyAuthorization) => {
@@ -93,14 +94,17 @@ export async function issueCertificate(cert) {
         if (provider) {
           cert.lastMessage = `正在清理 ${authz.identifier.value} 的 TXT 验证记录...`;
           await saveCert(cert);
+          await addLog(cert.id, cert.domain, 'info', `正在自动清理 ${authz.identifier.value} 的 TXT 验证记录...`);
           try {
             await provider.deleteTxtRecord({
               credentials: cert.credentials,
               domain: authz.identifier.value,
               name: dnsRecord
             });
+            await addLog(cert.id, cert.domain, 'success', `${authz.identifier.value} 的 TXT 验证记录已清理成功。`);
           } catch (e) {
             console.error(`清理 TXT 验证记录失败: ${e.message}`);
+            await addLog(cert.id, cert.domain, 'error', `自动清理 ${authz.identifier.value} 的 TXT 记录失败: ${e.message}`);
           }
         }
       }
@@ -125,12 +129,14 @@ export async function issueCertificate(cert) {
     cert.keyContent = certKey.toString();
     cert.lastMessage = '证书申请成功';
     await saveCert(cert);
+    await addLog(cert.id, cert.domain, 'success', `SSL 证书成功签发并保存！到期日: ${cert.expiryDate.split('T')[0]}`);
 
     return cert;
   } catch (err) {
     cert.status = 'error';
     cert.lastMessage = `申请失败: ${err.message}`;
     await saveCert(cert);
+    await addLog(cert.id, cert.domain, 'error', `SSL 证书申请/续期失败: ${err.message}`);
     throw err;
   }
 }

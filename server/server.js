@@ -442,6 +442,7 @@ app.post('/api/certs', async (req, res) => {
   };
 
   const saved = await saveCert(newCert);
+  await addLog(saved.id, saved.domain, 'info', `创建了域名 ${saved.domain} 的证书申请配置`);
   res.json(saved);
 });
 
@@ -458,6 +459,7 @@ app.put('/api/certs/:id', async (req, res) => {
   };
 
   const saved = await saveCert(updated);
+  await addLog(saved.id, saved.domain, 'info', `修改了域名 ${saved.domain} 的证书申请配置`);
   res.json(saved);
 });
 
@@ -467,6 +469,7 @@ app.delete('/api/certs/:id', async (req, res) => {
     return res.status(404).json({ error: '未找到该证书配置' });
   }
   await deleteCert(req.params.id);
+  await addLog(req.params.id, existing.domain, 'info', `删除了域名 ${existing.domain} 的证书申请配置`);
   res.json({ success: true });
 });
 
