@@ -33,5 +33,4 @@ Thumbs.db
 *.sln
 
 # 临时测试目录或文件
-scratch/db.json
-scratch/ip.cache
+scratch/
