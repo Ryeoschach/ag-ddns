@@ -1130,3 +1130,117 @@ body.theme-light .tab-btn.active::after {
     grid-column: span 1;
   }
 }
+
+/* SSL Certificates Expiration Visual Summary Chart & Timeline styling */
+.certs-summary-panel {
+  background-color: var(--panel-bg);
+  border: 2px solid var(--panel-border);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  clip-path: polygon(0 0, 97% 0, 100% 15px, 100% 100%, 3% 100%, 0 calc(100% - 15px));
+}
+
+.summary-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.summary-stat-card {
+  background-color: var(--secondary-color);
+  border: 2px solid var(--panel-border);
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.summary-stat-card h4 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.summary-stat-card p {
+  font-size: 1.75rem;
+  font-weight: 900;
+  font-family: var(--font-mono);
+  color: var(--neon-cyan);
+}
+
+.summary-stat-card.warning p {
+  color: var(--neon-yellow);
+}
+
+.summary-stat-card.error p {
+  color: var(--error-color);
+}
+
+.expiry-chart-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.expiry-chart-container h4 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--text-color);
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+  padding-bottom: 0.35rem;
+}
+
+body.theme-light .expiry-chart-container h4 {
+  border-bottom-color: rgba(255, 0, 85, 0.15);
+}
+
+.expiry-timeline-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.timeline-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.timeline-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.timeline-domain {
+  color: var(--text-color);
+  font-family: var(--font-mono);
+}
+
+.timeline-days {
+  color: var(--text-muted);
+}
+
+.timeline-progress-bar {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  height: 12px;
+  width: 100%;
+  position: relative;
+}
+
+.timeline-progress-fill {
+  height: 100%;
+  transition: width 0.5s ease-in-out;
+}
+
+@media (max-width: 768px) {
+  .summary-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

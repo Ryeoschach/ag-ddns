@@ -90,6 +90,33 @@
           <span class="icon">+</span> <span data-i18n="btnNewCert">New Certificate</span>
         </button>
       </div>
+
+      <!-- 证书到期汇总及可视化图表 -->
+      <div class="certs-summary-panel" id="certsSummaryPanel" style="display: none; margin-bottom: 1.5rem;">
+        <div class="summary-stats-grid">
+          <div class="summary-stat-card">
+            <h4 data-i18n="statActive">Active Certs</h4>
+            <p id="statActiveCerts">0</p>
+          </div>
+          <div class="summary-stat-card warning">
+            <h4 data-i18n="statExpiring">Expiring Soon (<30d)</h4>
+            <p id="statWarningCerts">0</p>
+          </div>
+          <div class="summary-stat-card error">
+            <h4 data-i18n="statExpired">Expired Certs</h4>
+            <p id="statExpiredCerts">0</p>
+          </div>
+        </div>
+        
+        <!-- 证书过期进度图表 -->
+        <div class="expiry-chart-container">
+          <h4 data-i18n="lblExpiryTimeline">Certificate Expiration Timeline</h4>
+          <div id="expiryTimelineGrid" class="expiry-timeline-grid">
+            <!-- 由 JS 动态填充进度条 -->
+          </div>
+        </div>
+      </div>
+
       <div id="certsGrid" class="tasks-grid">
         <!-- 由 JS 动态加载的证书卡片 -->
         <div class="empty-state" id="emptyCertState">

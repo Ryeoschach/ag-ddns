@@ -122,7 +122,11 @@ const translations = {
     tipDownload: "Download Cert & Key",
     confirmDeleteCert: "Are you sure you want to delete certificate configuration for \"{domain}\"?",
     certSaveSuccess: "Certificate configuration saved.",
-    certRenewTriggered: "Certificate renewal task has been manually triggered. Monitor the console for updates."
+    certRenewTriggered: "Certificate renewal task has been manually triggered. Monitor the console for updates.",
+    statActive: "Active Certs",
+    statExpiring: "Expiring Soon (<30d)",
+    statExpired: "Expired Certs",
+    lblExpiryTimeline: "Certificate Expiration Timeline"
   },
   zh: {
     appTitle: "DDNS 管理面板",
@@ -244,7 +248,11 @@ const translations = {
     tipDownload: "下载证书及私钥文件",
     confirmDeleteCert: "您确定要删除域名 \"{domain}\" 的证书配置吗？",
     certSaveSuccess: "证书配置保存成功。",
-    certRenewTriggered: "证书申请/续期任务已手动触发，请在面板和日志中关注状态更新。"
+    certRenewTriggered: "证书申请/续期任务已手动触发，请在面板和日志中关注状态更新。",
+    statActive: "有效证书",
+    statExpiring: "即将过期 (<30天)",
+    statExpired: "已过期证书",
+    lblExpiryTimeline: "证书过期时效与寿命进度"
   }
 };
 
@@ -850,6 +858,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderCerts() {
+    updateCertsSummary();
+
     const cards = certsGrid.querySelectorAll('.task-card');
     cards.forEach(c => c.remove());
     
@@ -963,6 +973,79 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmDeleteCert(id);
       };
     });
+  }
+
+  function updateCertsSummary() {
+    if (allCerts.length === 0) {
+      document.getElementById('certsSummaryPanel').style.display = 'none';
+      return;
+    }
+    
+    document.getElementById('certsSummaryPanel').style.display = 'flex';
+    
+    let activeCount = 0;
+    let warningCount = 0;
+    let expiredCount = 0;
+    
+    const timelineGrid = document.getElementById('expiryTimelineGrid');
+    timelineGrid.innerHTML = '';
+    
+    allCerts.forEach(cert => {
+      if (cert.status !== 'success' || !cert.expiryDate) {
+        return;
+      }
+      
+      const expiryMs = new Date(cert.expiryDate).getTime();
+      const now = Date.now();
+      const remainDays = (expiryMs - now) / (24 * 60 * 60 * 1000);
+      
+      if (remainDays <= 0) {
+        expiredCount++;
+      } else if (remainDays < 30) {
+        warningCount++;
+        activeCount++;
+      } else {
+        activeCount++;
+      }
+      
+      // Calculate progress percentage (assume 90-day validity for ACME certificates)
+      const maxLifespan = 90;
+      const percentage = Math.max(0, Math.min(100, (remainDays / maxLifespan) * 100));
+      
+      let barColor = 'linear-gradient(90deg, var(--neon-cyan), var(--neon-green))';
+      let statusText = currentLang === 'zh' ? `${Math.ceil(remainDays)} 天剩余` : `${Math.ceil(remainDays)} days remaining`;
+      
+      if (remainDays <= 0) {
+        barColor = 'var(--error-color)';
+        statusText = currentLang === 'zh' ? '已过期' : 'Expired';
+      } else if (remainDays < 10) {
+        barColor = 'linear-gradient(90deg, var(--neon-pink), var(--error-color))';
+      } else if (remainDays < 30) {
+        barColor = 'linear-gradient(90deg, var(--neon-yellow), #ff9900)';
+      }
+      
+      const item = document.createElement('div');
+      item.className = 'timeline-item';
+      item.innerHTML = `
+        <div class="timeline-meta">
+          <span class="timeline-domain">${escapeHtml(cert.domain)}</span>
+          <span class="timeline-days">${statusText}</span>
+        </div>
+        <div class="timeline-progress-bar">
+          <div class="timeline-progress-fill" style="width: ${percentage}%; background: ${barColor};"></div>
+        </div>
+      `;
+      timelineGrid.appendChild(item);
+    });
+    
+    document.getElementById('statActiveCerts').innerText = activeCount;
+    document.getElementById('statWarningCerts').innerText = warningCount;
+    document.getElementById('statExpiredCerts').innerText = expiredCount;
+    
+    // If no timeline items were rendered, display a message
+    if (timelineGrid.children.length === 0) {
+      timelineGrid.innerHTML = `<div style="font-size:0.8rem; color:var(--text-muted)">${currentLang === 'zh' ? '暂无成功申请的证书数据时效线。' : 'No active certificate expiration timeline available.'}</div>`;
+    }
   }
   
   /**
