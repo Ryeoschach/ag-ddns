@@ -35,9 +35,6 @@
           </select>
         </div>
         
-        <button id="btnNewTask" class="btn btn-primary">
-          <span class="icon">+</span> <span data-i18n="btnNewTask">New DDNS Task</span>
-        </button>
         <button id="btnSettings" class="btn btn-secondary">
           <span class="icon">⚙</span> <span data-i18n="btnSettings">Settings</span>
         </button>
@@ -72,7 +69,12 @@
 
       <div class="section-header">
         <h2 data-i18n="secTasksTitle">Monitored DNS Records</h2>
-        <span class="pulse-indicator"><span data-i18n="pulseLive">● Live</span></span>
+        <div style="display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap;">
+          <span class="pulse-indicator"><span data-i18n="pulseLive">● Live</span></span>
+          <button id="btnNewTask" class="btn btn-primary">
+            <span class="icon">+</span> <span data-i18n="btnNewTask">New DDNS Task</span>
+          </button>
+        </div>
       </div>
       <div id="tasksGrid" class="tasks-grid">
         <!-- 由 JS 动态加载的卡片 -->
