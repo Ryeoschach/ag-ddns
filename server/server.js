@@ -298,6 +298,10 @@ async function runDdnsTask(task, force = false) {
 
     if (updatedAny) {
       await addLog(task.id, task.name, 'success', `IP 成功更新为 ${ip} (${task.lastMessage})`);
+      sendNotification(
+        'DDNS 域名解析更新成功通知',
+        `任务名称: ${task.name}\n域名: ${task.domain}\n服务商: ${task.provider}\n解析类型: ${task.recordType}\n更新方式: 本地模式\n新 IP 地址: ${ip}\n反馈信息: ${task.lastMessage}`
+      ).catch(() => {});
     } else {
       // IP 没有变化时无需重复写入日志，避免日志爆炸
     }
@@ -514,6 +518,10 @@ app.post('/api/client/report', async (req, res) => {
 
     if (updatedAny) {
       await addLog(task.id, task.name, 'success', `客户端上报 IP ${ip}。DNS 解析已成功更新。`);
+      sendNotification(
+        'DDNS 域名解析更新成功通知',
+        `任务名称: ${task.name}\n域名: ${task.domain}\n服务商: ${task.provider}\n上报 IP: ${ip}\n更新方式: 远程客户端模式\n新 IP 地址: ${ip}\n反馈信息: ${task.lastMessage}`
+      ).catch(() => {});
     }
 
     res.json({ success: true, message: '上报处理完毕', ip, updated: updatedAny });
