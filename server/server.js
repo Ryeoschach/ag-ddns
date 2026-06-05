@@ -19,7 +19,7 @@ import {
 } from './db.js';
 import { generateBash, generatePython } from './exporter.js';
 import { issueCertificate, checkAndRenewCerts } from './acme.js';
-import { sendNotification } from './notify.js';
+import { sendNotification, testNotification } from './notify.js';
 
 // 导入服务商适配器
 import * as cloudflare from '../shared/providers/cloudflare.js';
@@ -585,6 +585,15 @@ app.get('/api/settings', async (req, res) => {
 app.post('/api/settings', async (req, res) => {
   await saveSettings(req.body);
   res.json({ success: true });
+});
+
+app.post('/api/settings/test-notify', async (req, res) => {
+  try {
+    const results = await testNotification(req.body);
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 /**

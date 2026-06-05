@@ -25,6 +25,7 @@ AG-DDNS 是一个轻量级、无依赖的客户端/服务端（C/S）架构动�
 *   **多服务商支持**：全面兼容 **Cloudflare**、**阿里云**、**腾讯云 (DNSPod)**、**华为云**、**HE.net**、**NameSilo**、**No-IP**、**ClouDNS**、**DNS.com**，以及支持自定义 Webhook 回调（Callback）。
 *   **免依赖脚本导出**：支持将配置一键导出为纯净的独立脚本（Python 或 Bash），支持自动本地写日志（保存至同级目录 `ddns.log`），适合嵌入路由器、NAS 或直接挂载在 `crontab` 中运行。
 *   **极佳的安全防噪**：内置 IP 变动对比缓存，只有 IP 真实变化时才会触发域名服务商 API，同时在代理模式下如果客户端超时未上报，服务端会自动报警记录日志。
+*   **主动告警推送与通道测试**：支持企业微信 Webhook、钉钉机器人、飞书机器人、Telegram Bot 和自定义 HTTP POST Webhook 告警。支持在 Web 全局设置面板中对输入配置进行实时“一键测试”（支持飞书/钉钉/企业微信应用级错误码的深度捕获与展示），并在 DDNS 运行失败、SSL 证书续期失败、远程客户端代理离线超时等关键节点触发主动告警。
 *   **SSL 证书自动申请与续期 (DNS-01 ACME)**：
     *   内置 Let's Encrypt / ZeroSSL 证书自动申请与托管服务。
     *   支持 DNS-01 验证流程，目前自动适配 Cloudflare、阿里云、DNSPod 的 DNS 接口，自动添加/清理挑战验证记录。
@@ -252,6 +253,7 @@ AG-DDNS is a lightweight, zero-dependency client/server (C/S) dynamic DNS (DDNS)
 *   **Wide Provider Support**: Out-of-the-box support for **Cloudflare**, **Aliyun**, **Tencent Cloud (DNSPod)**, **Huawei Cloud**, **HE.net**, **NameSilo**, **No-IP**, **ClouDNS**, **DNS.com**, and custom Webhook/Callback integrations.
 *   **Dependency-Free Exporter**: Export custom Python or Bash scripts containing all necessary settings. The exported scripts run natively (e.g. via crontab) and append execution records to `ddns.log` automatically.
 *   **Smart API Saving**: Built-in cache compares current IP to the last successfully updated IP, avoiding redundant calls to DNS API endpoints. In remote client mode, the server logs a connection timeout alert if the client drops offline.
+*   **Active Alerts & Webhook Testing**: Native async notifications for WeChat Work, DingTalk, Feishu, Telegram Bot, and custom HTTP POST JSON webhooks. Features real-time connection checks ("Test Notifications") from the Global Settings panel (with deep error code validation for WeChat/DingTalk/Feishu) and automatically dispatches warning messages on DDNS task failures, ACME certificate renewal failures, or remote client offline timeout events.
 *   **Automated SSL Certificate Manager (DNS-01 ACME)**:
     *   Automates Let's Encrypt / ZeroSSL certificate request, validation, and renewal.
     *   Supports DNS-01 challenge verification, currently automated for Cloudflare, Aliyun, and DNSPod.

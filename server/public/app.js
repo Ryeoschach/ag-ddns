@@ -71,6 +71,11 @@ const translations = {
     lblDashboardPort: "Dashboard Port",
     helpDashboardPort: "Requires server restart to apply changes.",
     btnSaveSettings: "Save Settings",
+    btnTestSettings: "Test Notifications",
+    btnTesting: "Testing...",
+    noChannelsToTest: "Please configure at least one notification channel to test.",
+    testAllSuccess: "All notification channels tested successfully!",
+    testSomeFailed: "Some notification tests failed:",
     lblSettingScriptInfo: "Custom Script Header Info / License",
     helpSettingScriptInfo: "This custom text will be prepended as comments at the top of generated scripts.",
     exportTitle: "Export Standalone Script",
@@ -230,6 +235,11 @@ const translations = {
     lblDashboardPort: "控制台端口",
     helpDashboardPort: "修改此端口需要重启 DDNS 服务端生效。",
     btnSaveSettings: "保存设置",
+    btnTestSettings: "测试通知通道",
+    btnTesting: "测试中...",
+    noChannelsToTest: "请输入至少一个通道的配置信息进行测试。",
+    testAllSuccess: "所有通知通道测试成功！",
+    testSomeFailed: "部分通知通道测试失败：",
     lblSettingScriptInfo: "自定义脚本介绍/授权信息",
     helpSettingScriptInfo: "此处填写的文字将作为注释前缀自动插入到所有导出的 Python/Bash 脚本文件的最上方。",
     exportTitle: "导出独立运行脚本",
@@ -657,6 +667,7 @@ document.addEventListener('DOMContentLoaded', () => {
   taskForm.onsubmit = handleTaskSubmit;
   certForm.onsubmit = handleCertSubmit;
   settingsForm.onsubmit = handleSettingsSubmit;
+  document.getElementById('btnTestSettings').onclick = handleTestSettings;
   
   // 导出脚本面板的标签页切换
   const tabBash = document.getElementById('tabBash');
@@ -1877,6 +1888,70 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   
+  async function handleTestSettings() {
+    const payload = {
+      notifyTelegramToken: document.getElementById('settingNotifyTelegramToken').value.trim(),
+      notifyTelegramChatId: document.getElementById('settingNotifyTelegramChatId').value.trim(),
+      notifyDingTalk: document.getElementById('settingNotifyDingTalk').value.trim(),
+      notifyWeChat: document.getElementById('settingNotifyWeChat').value.trim(),
+      notifyFeishu: document.getElementById('settingNotifyFeishu').value.trim(),
+      notifyCustomUrl: document.getElementById('settingNotifyCustomUrl').value.trim()
+    };
+
+    if (!payload.notifyTelegramToken && !payload.notifyTelegramChatId && !payload.notifyDingTalk && !payload.notifyWeChat && !payload.notifyFeishu && !payload.notifyCustomUrl) {
+      showToast(t('noChannelsToTest', 'Please configure at least one notification channel to test.'), 'warning');
+      return;
+    }
+
+    const btn = document.getElementById('btnTestSettings');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerText = t('btnTesting', 'Testing...');
+
+    try {
+      const res = await fetch('/api/settings/test-notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.error) {
+          showToast(data.error, 'error');
+          return;
+        }
+        
+        let successCount = 0;
+        let failCount = 0;
+        let htmlDetails = [];
+        
+        for (const [channel, status] of Object.entries(data)) {
+          if (status.success) {
+            successCount++;
+            htmlDetails.push(`• <b>${channel}</b>: <span style="color: var(--neon-cyan); font-weight: bold;">✔ Success</span>`);
+          } else {
+            failCount++;
+            htmlDetails.push(`• <b>${channel}</b>: <span style="color: var(--neon-pink); font-weight: bold;">✖ Failed</span> (${status.error || 'Unknown Error'})`);
+          }
+        }
+        
+        if (failCount === 0) {
+          showToast(t('testAllSuccess', 'All notification channels tested successfully!') + '<br>' + htmlDetails.join('<br>'), 'success', 6000);
+        } else {
+          showToast(t('testSomeFailed', 'Some notification tests failed:') + '<br>' + htmlDetails.join('<br>'), 'warning', 8000);
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        showToast(`Error: ${errData.error || 'Failed to test notification settings'}`, 'error');
+      }
+    } catch (err) {
+      showToast(`${t('errNetWork', 'Network error')}: ${err.message}`, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  }
+
   async function handleSettingsSubmit(e) {
     e.preventDefault();
     const disablePassword = document.getElementById('settingDisablePassword').checked;
