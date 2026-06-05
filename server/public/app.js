@@ -128,6 +128,7 @@ const translations = {
     lblCertDnsDelay: "DNS Propagation Delay (Seconds)",
     lblCertUseStaging: "Use Let's Encrypt Staging",
     lblEnableCert: "Enable Auto-Renewal",
+    helpAutoRenewText: "When enabled, the server will periodically check this certificate and automatically trigger renewal when it is within 30 days of expiration.",
     btnSaveCert: "Save Configuration",
     rowExpiryDate: "Expiry Date",
     tipRenew: "Renew Certificate Now",
@@ -292,6 +293,7 @@ const translations = {
     lblCertDnsDelay: "DNS 生效等待时间 (秒)",
     lblCertUseStaging: "使用 Let's Encrypt 测试环境 (Staging)",
     lblEnableCert: "启用自动检查并续期",
+    helpAutoRenewText: "开启后，服务端将定期轮询证书状态，并在过期前 30 天内自动触发 DNS-01 验证并完成续期。",
     btnSaveCert: "保存配置",
     rowExpiryDate: "过期时间",
     tipRenew: "立即申请/续期证书",
@@ -662,6 +664,14 @@ document.addEventListener('DOMContentLoaded', () => {
     helpCertKeyBox.style.display = isHidden ? 'block' : 'none';
     btnHelpCertKey.innerText = isHidden ? '×' : '?';
   };
+
+  const btnHelpAutoRenew = document.getElementById('btnHelpAutoRenew');
+  const helpAutoRenewBox = document.getElementById('helpAutoRenewBox');
+  btnHelpAutoRenew.onclick = () => {
+    const isHidden = helpAutoRenewBox.style.display === 'none';
+    helpAutoRenewBox.style.display = isHidden ? 'block' : 'none';
+    btnHelpAutoRenew.innerText = isHidden ? '×' : '?';
+  };
   
   // 提交表单
   taskForm.onsubmit = handleTaskSubmit;
@@ -923,6 +933,8 @@ document.addEventListener('DOMContentLoaded', () => {
     certForm.reset();
     document.getElementById('helpCertKeyBox').style.display = 'none';
     document.getElementById('btnHelpCertKey').innerText = '?';
+    document.getElementById('helpAutoRenewBox').style.display = 'none';
+    document.getElementById('btnHelpAutoRenew').innerText = '?';
     
     if (id) {
       const cert = allCerts.find(c => c.id === id);
