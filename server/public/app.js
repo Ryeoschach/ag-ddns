@@ -133,7 +133,33 @@ const translations = {
     statActive: "Active Certs",
     statExpiring: "Expiring Soon (<30d)",
     statExpired: "Expired Certs",
-    lblExpiryTimeline: "Certificate Expiration Timeline"
+    lblExpiryTimeline: "Certificate Expiration Timeline",
+    loginTitle: "System Authentication",
+    lblLoginPassword: "Enter Dashboard Password",
+    btnLogin: "Authorize",
+    lblDashboardPassword: "Dashboard Password",
+    lblDisablePasswordAuth: "Remove password protection (public access)",
+    helpDashboardPassword: "Enter a new password to restrict Web UI access, or check the box to remove authentication.",
+    sectionNotifications: "Notification Webhooks",
+    lblNotifyTelegram: "Telegram Bot Token & Chat ID",
+    helpNotifyTelegram: "Telegram bot access token and chat ID. Leave empty to disable.",
+    lblNotifyDingTalk: "DingTalk Webhook URL",
+    helpNotifyDingTalk: "DingTalk bot access token webhook URL. Leave empty to disable.",
+    lblNotifyWeChat: "WeChat Work Webhook URL",
+    helpNotifyWeChat: "WeChat Work bot webhook URL. Leave empty to disable.",
+    lblNotifyFeishu: "Feishu Webhook URL",
+    helpNotifyFeishu: "Feishu bot webhook URL. Leave empty to disable.",
+    lblNotifyCustomUrl: "Custom HTTP Webhook URL",
+    helpNotifyCustomUrl: "A custom URL that will receive notifications via POST request (JSON payload). Leave empty to disable.",
+    optAllTasks: "All Tasks",
+    optAllLogTypes: "All Types",
+    optLogSuccess: "Success",
+    optLogError: "Error",
+    optLogInfo: "Info",
+    btnDownloadLogs: "Download Logs",
+    secIpHistoryTitle: "Recent IP Changes History",
+    loginSuccess: "Authorized successfully!",
+    logsDownloadSuccess: "Logs downloaded successfully!"
   },
   zh: {
     appTitle: "DDNS 管理面板",
@@ -266,11 +292,112 @@ const translations = {
     statActive: "有效证书",
     statExpiring: "即将过期 (<30天)",
     statExpired: "已过期证书",
-    lblExpiryTimeline: "证书过期时效与寿命进度"
+    lblExpiryTimeline: "证书过期时效与寿命进度",
+    loginTitle: "系统安全登录",
+    lblLoginPassword: "请输入管理面板密码",
+    btnLogin: "授权登录",
+    lblDashboardPassword: "控制面板登录密码",
+    lblDisablePasswordAuth: "清除并禁用密码保护（公开访问）",
+    helpDashboardPassword: "输入新密码以限制仪表盘 Web UI 的访问权限，或者勾选上方选项以完全禁用密码保护。",
+    sectionNotifications: "通知通道配置",
+    lblNotifyTelegram: "Telegram 机器人 Token & Chat ID",
+    helpNotifyTelegram: "Telegram 机器人的 API Token 及其关联的聊天 Chat ID，留空则禁用。",
+    lblNotifyDingTalk: "钉钉机器人 Webhook URL",
+    helpNotifyDingTalk: "钉钉机器人的 Webhook URL，留空则禁用。",
+    lblNotifyWeChat: "企业微信 Webhook URL",
+    helpNotifyWeChat: "企业微信机器人的 Webhook URL，留空则禁用。",
+    lblNotifyFeishu: "飞书机器人 Webhook URL",
+    helpNotifyFeishu: "飞书自建机器人的 Webhook URL，留空则禁用。",
+    lblNotifyCustomUrl: "自定义 HTTP 接口 Webhook URL",
+    helpNotifyCustomUrl: "可配置接收 HTTP POST JSON 数据包的自定义推送 URL 接口，留空则禁用。",
+    optAllTasks: "所有任务",
+    optAllLogTypes: "所有类型",
+    optLogSuccess: "正常/成功",
+    optLogError: "异常/失败",
+    optLogInfo: "系统信息",
+    btnDownloadLogs: "下载运行日志",
+    secIpHistoryTitle: "最近公网 IP 变动历史",
+    loginSuccess: "授权成功，欢迎回来！",
+    logsDownloadSuccess: "日志下载成功！"
   }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+  // 1. 拦截 fetch 请求以自动注入 JWT Token 并捕获 401 错误
+  const originalFetch = window.fetch;
+  window.fetch = async function(url, options = {}) {
+    if (url.startsWith('/api/') && !url.startsWith('/api/auth/')) {
+      const token = localStorage.getItem('ddns_token');
+      if (token) {
+        options.headers = options.headers || {};
+        options.headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+    try {
+      const res = await originalFetch(url, options);
+      if (res.status === 401 && !url.includes('/api/auth/login')) {
+        localStorage.removeItem('ddns_token');
+        showLoginModal();
+        throw new Error('Unauthorized');
+      }
+      return res;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  // 登录相关的 DOM 元素与逻辑
+  const loginModal = document.getElementById('loginModal');
+  const loginForm = document.getElementById('loginForm');
+  const loginPassword = document.getElementById('loginPassword');
+
+  function showLoginModal() {
+    loginModal.classList.add('active');
+    loginPassword.value = '';
+    loginPassword.focus();
+  }
+
+  function hideLoginModal() {
+    loginModal.classList.remove('active');
+  }
+
+  loginForm.onsubmit = async (e) => {
+    e.preventDefault();
+    const password = loginPassword.value;
+    const btnSubmit = document.getElementById('btnLoginSubmit');
+    
+    btnSubmit.disabled = true;
+    const originalText = btnSubmit.innerText;
+    btnSubmit.innerText = t('btnLogin', 'Authorize') + '...';
+
+    try {
+      const res = await originalFetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Password incorrect', 'error');
+      } else {
+        localStorage.setItem('ddns_token', data.token);
+        hideLoginModal();
+        showToast(t('loginSuccess', 'Authorized successfully'), 'success');
+        
+        // 成功登录后，重新刷新数据
+        fetchTasks();
+        fetchCerts();
+        fetchLogs();
+        fetchIpHistory();
+      }
+    } catch (err) {
+      showToast(t('errNetWork', 'Network error'), 'error');
+    } finally {
+      btnSubmit.disabled = false;
+      btnSubmit.innerText = originalText;
+    }
+  };
+
   // 主题与语言选择下拉框
   const langSelect = document.getElementById('langSelect');
   const themeSelect = document.getElementById('themeSelect');
@@ -342,15 +469,41 @@ document.addEventListener('DOMContentLoaded', () => {
   // 执行初始化加载
   applyTheme(currentTheme);
   applyLanguage(currentLang);
-  fetchTasks();
-  fetchCerts();
-  fetchLogs();
+  
+  async function initApp() {
+    try {
+      const res = await originalFetch('/api/auth/status');
+      const data = await res.json();
+      if (data.passwordSet) {
+        const token = localStorage.getItem('ddns_token');
+        if (!token) {
+          showLoginModal();
+          return;
+        }
+      }
+      fetchTasks();
+      fetchCerts();
+      fetchLogs();
+      fetchIpHistory();
+    } catch (e) {
+      console.error('初始化加载失败:', e);
+      fetchTasks();
+      fetchCerts();
+      fetchLogs();
+      fetchIpHistory();
+    }
+  }
+
+  initApp();
   
   // 每 3 秒定期拉取一次任务状态和控制台日志，提供高响应度的自动刷新体验
   setInterval(() => {
-    fetchTasks(true);
-    fetchCerts(true);
-    fetchLogs();
+    if (!loginModal.classList.contains('active')) {
+      fetchTasks(true);
+      fetchCerts(true);
+      fetchLogs();
+      fetchIpHistory();
+    }
   }, 3000);
   
   // 绑定事件监听器
@@ -361,6 +514,38 @@ document.addEventListener('DOMContentLoaded', () => {
   
   tabDdns.onclick = () => switchTab('ddns');
   tabCerts.onclick = () => switchTab('certs');
+
+  // 绑定日志过滤器与下载日志事件
+  document.getElementById('logFilterTask').onchange = () => fetchLogs();
+  document.getElementById('logFilterType').onchange = () => fetchLogs();
+  document.getElementById('btnDownloadLogs').onclick = async () => {
+    try {
+      const taskId = document.getElementById('logFilterTask').value;
+      const type = document.getElementById('logFilterType').value;
+      
+      let query = '?limit=500';
+      if (taskId) query += `&taskId=${encodeURIComponent(taskId)}`;
+      if (type) query += `&type=${encodeURIComponent(type)}`;
+
+      const res = await fetch(`/api/logs${query}`);
+      const logs = await res.json();
+      
+      const text = logs.map(l => `[${l.timestamp}] [${l.taskName || 'System'}] [${l.type.toUpperCase()}] ${l.message}`).join('\n');
+      
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `ag_ddns_logs_${Date.now()}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast(t('logsDownloadSuccess', 'Logs downloaded successfully!'), 'success');
+    } catch (e) {
+      showToast(`Download failed: ${e.message}`, 'error');
+    }
+  };
   
   // 更改服务商/运行模式时，联动隐藏/显示对应表单
   taskProvider.onchange = () => toggleProviderCredentialsFields();
@@ -644,6 +829,7 @@ document.addEventListener('DOMContentLoaded', () => {
     allTasks = data;
     renderTasks();
     updateMetrics();
+    updateLogTaskFilter();
   }
 
   /**
@@ -913,13 +1099,102 @@ document.addEventListener('DOMContentLoaded', () => {
   /**
    * 拉取服务器日志数据并渲染
    */
+  /**
+   * 拉取服务器日志数据并渲染
+   */
   async function fetchLogs() {
     try {
-      const res = await fetch('/api/logs');
+      const logFilterTask = document.getElementById('logFilterTask');
+      const logFilterType = document.getElementById('logFilterType');
+      const taskId = logFilterTask ? logFilterTask.value : '';
+      const type = logFilterType ? logFilterType.value : '';
+      
+      let query = '?limit=100';
+      if (taskId) query += `&taskId=${encodeURIComponent(taskId)}`;
+      if (type) query += `&type=${encodeURIComponent(type)}`;
+
+      const res = await fetch(`/api/logs${query}`);
       const logs = await res.json();
       renderLogs(logs);
     } catch (e) {
-      console.error('Failed to load logs', e);
+      console.error('加载日志失败', e);
+    }
+  }
+
+  /**
+   * 获取并渲染最近的 IP 变更记录
+   */
+  async function fetchIpHistory() {
+    const panel = document.getElementById('ipHistoryPanel');
+    const content = document.getElementById('ipHistoryContent');
+    if (!panel || !content) return;
+
+    try {
+      const res = await fetch('/api/ip-history');
+      const data = await res.json();
+      if (data.length === 0) {
+        panel.style.display = 'none';
+        return;
+      }
+      
+      panel.style.display = 'block';
+      content.innerHTML = '';
+      
+      data.forEach(item => {
+        const line = document.createElement('div');
+        line.style.marginBottom = '0.5rem';
+        line.style.borderBottom = '1px dashed rgba(0, 243, 255, 0.1)';
+        line.style.paddingBottom = '0.3rem';
+        line.style.display = 'flex';
+        line.style.justifyContent = 'space-between';
+        line.style.alignItems = 'center';
+        line.style.flexWrap = 'wrap';
+        line.style.gap = '0.5rem';
+        
+        const info = document.createElement('span');
+        info.innerHTML = `<span style="color: var(--console-time); margin-right: 0.5rem;">[${formatDate(item.timestamp)}]</span>` +
+                         `<span style="color: var(--neon-pink); font-weight: bold; margin-right: 0.5rem;">[${escapeHtml(item.taskName)}]</span>` +
+                         `<span style="color: var(--text-color);">${escapeHtml(item.message)}</span>`;
+                         
+        const badge = document.createElement('span');
+        badge.style.backgroundColor = 'rgba(0, 243, 255, 0.15)';
+        badge.style.border = '1px solid var(--neon-cyan)';
+        badge.style.color = 'var(--neon-cyan)';
+        badge.style.padding = '0.1rem 0.4rem';
+        badge.style.fontSize = '0.75rem';
+        badge.style.fontFamily = 'var(--font-mono)';
+        badge.style.textShadow = '0 0 5px var(--neon-cyan)';
+        badge.style.borderRadius = '0';
+        badge.innerText = item.ip;
+        
+        line.appendChild(info);
+        line.appendChild(badge);
+        content.appendChild(line);
+      });
+    } catch (e) {
+      console.error('加载 IP 历史记录失败', e);
+    }
+  }
+
+  /**
+   * 刷新日志面板的任务过滤器下拉列表
+   */
+  function updateLogTaskFilter() {
+    const taskSelect = document.getElementById('logFilterTask');
+    if (!taskSelect) return;
+    const currentValue = taskSelect.value;
+    
+    taskSelect.innerHTML = `<option value="" data-i18n="optAllTasks">${t('optAllTasks', 'All Tasks')}</option>`;
+    
+    allTasks.forEach(task => {
+      const opt = document.createElement('option');
+      opt.value = task.id;
+      opt.innerText = task.name;
+      taskSelect.appendChild(opt);
+    });
+    
+    if (allTasks.some(t => t.id === currentValue)) {
+      taskSelect.value = currentValue;
     }
   }
   
@@ -1585,6 +1860,17 @@ document.addEventListener('DOMContentLoaded', () => {
       const settings = await res.json();
       document.getElementById('settingPort').value = settings.port || 8080;
       document.getElementById('settingScriptInfo').value = settings.scriptInfo || '';
+      document.getElementById('settingPassword').value = '';
+      document.getElementById('settingDisablePassword').checked = false;
+      
+      // 加载通知渠道设置
+      document.getElementById('settingNotifyTelegramToken').value = settings.notifyTelegramToken || '';
+      document.getElementById('settingNotifyTelegramChatId').value = settings.notifyTelegramChatId || '';
+      document.getElementById('settingNotifyDingTalk').value = settings.notifyDingTalk || '';
+      document.getElementById('settingNotifyWeChat').value = settings.notifyWeChat || '';
+      document.getElementById('settingNotifyFeishu').value = settings.notifyFeishu || '';
+      document.getElementById('settingNotifyCustomUrl').value = settings.notifyCustomUrl || '';
+
       showModal(settingsModal);
     } catch (e) {
       showToast('Failed to load system settings', 'error');
@@ -1593,10 +1879,28 @@ document.addEventListener('DOMContentLoaded', () => {
   
   async function handleSettingsSubmit(e) {
     e.preventDefault();
+    const disablePassword = document.getElementById('settingDisablePassword').checked;
+    const newPass = document.getElementById('settingPassword').value;
+
     const payload = {
       port: parseInt(document.getElementById('settingPort').value) || 8080,
-      scriptInfo: document.getElementById('settingScriptInfo').value
+      scriptInfo: document.getElementById('settingScriptInfo').value,
+      
+      // 通知渠道设置
+      notifyTelegramToken: document.getElementById('settingNotifyTelegramToken').value.trim(),
+      notifyTelegramChatId: document.getElementById('settingNotifyTelegramChatId').value.trim(),
+      notifyDingTalk: document.getElementById('settingNotifyDingTalk').value.trim(),
+      notifyWeChat: document.getElementById('settingNotifyWeChat').value.trim(),
+      notifyFeishu: document.getElementById('settingNotifyFeishu').value.trim(),
+      notifyCustomUrl: document.getElementById('settingNotifyCustomUrl').value.trim()
     };
+
+    if (disablePassword) {
+      payload.password = '';
+    } else if (newPass !== '') {
+      payload.password = newPass;
+    }
+
     try {
       const res = await fetch('/api/settings', {
         method: 'POST',
@@ -1606,6 +1910,15 @@ document.addEventListener('DOMContentLoaded', () => {
       if (res.ok) {
         closeModal(settingsModal);
         showToast(t('settingsSaveSuccess', 'Settings saved. Port changes will apply upon server restart.'), 'success');
+        
+        if (disablePassword) {
+          localStorage.removeItem('ddns_token');
+        } else if (newPass !== '') {
+          localStorage.removeItem('ddns_token');
+          setTimeout(() => {
+            showLoginModal();
+          }, 1000);
+        }
       } else {
         showToast('Failed to save settings', 'error');
       }

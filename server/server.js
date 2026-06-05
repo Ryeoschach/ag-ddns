@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import os from 'os';
+import crypto from 'crypto';
 import {
   getTasks,
   getTask,
@@ -13,10 +14,12 @@ import {
   getCerts,
   getCert,
   saveCert,
-  deleteCert
+  deleteCert,
+  verifyPassword
 } from './db.js';
 import { generateBash, generatePython } from './exporter.js';
 import { issueCertificate, checkAndRenewCerts } from './acme.js';
+import { sendNotification } from './notify.js';
 
 // 导入服务商适配器
 import * as cloudflare from '../shared/providers/cloudflare.js';
@@ -45,6 +48,103 @@ const providers = {
 
 const app = express();
 app.use(express.json());
+
+// 内存中生成的 JWT 签名密钥
+const JWT_SECRET = crypto.randomBytes(64).toString('hex');
+
+function base64UrlEncode(str) {
+  return Buffer.from(str, 'utf8').toString('base64url');
+}
+
+function base64UrlDecode(str) {
+  return Buffer.from(str, 'base64url').toString('utf8');
+}
+
+function generateToken(payload) {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const encodedHeader = base64UrlEncode(JSON.stringify(header));
+  const encodedPayload = base64UrlEncode(JSON.stringify({ ...payload, exp: Date.now() + 7 * 24 * 3600 * 1000 }));
+  const signature = crypto
+    .createHmac('sha256', JWT_SECRET)
+    .update(`${encodedHeader}.${encodedPayload}`)
+    .digest('base64url');
+  return `${encodedHeader}.${encodedPayload}.${signature}`;
+}
+
+function verifyToken(token) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const [header, payload, signature] = parts;
+    const expectedSignature = crypto
+      .createHmac('sha256', JWT_SECRET)
+      .update(`${header}.${payload}`)
+      .digest('base64url');
+    if (signature !== expectedSignature) return null;
+    const decodedPayload = JSON.parse(base64UrlDecode(payload));
+    if (decodedPayload.exp < Date.now()) return null;
+    return decodedPayload;
+  } catch (e) {
+    return null;
+  }
+}
+
+// 鉴权中间件
+async function authMiddleware(req, res, next) {
+  const settings = await getSettings();
+  if (!settings.password) {
+    return next();
+  }
+
+  const authHeader = req.headers.authorization;
+  let token = '';
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  } else if (req.query && req.query.token) {
+    token = req.query.token;
+  }
+
+  if (!token) {
+    return res.status(401).json({ error: '未登录' });
+  }
+
+  const payload = verifyToken(token);
+  if (!payload) {
+    return res.status(401).json({ error: '登录失效，请重新登录' });
+  }
+
+  req.user = payload;
+  next();
+}
+
+// 登录与状态接口（无需鉴权）
+app.get('/api/auth/status', async (req, res) => {
+  const settings = await getSettings();
+  res.json({ passwordSet: !!settings.password });
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  const { password } = req.body;
+  if (!password) {
+    return res.status(400).json({ error: '请输入密码' });
+  }
+  const settings = await getSettings();
+  if (!settings.password) {
+    return res.json({ success: true, token: '', message: '未设置密码，直接访问' });
+  }
+  const isMatch = await verifyPassword(password);
+  if (!isMatch) {
+    return res.status(401).json({ error: '密码错误，请重新输入' });
+  }
+  const token = generateToken({ user: 'admin' });
+  res.json({ success: true, token });
+});
+
+// 对管理 API 应用鉴权中间件
+app.use('/api/tasks', authMiddleware);
+app.use('/api/certs', authMiddleware);
+app.use('/api/logs', authMiddleware);
+app.use('/api/settings', authMiddleware);
 
 // 托管 Web 界面静态文件
 const PUBLIC_DIR = path.resolve('server/public');
@@ -129,7 +229,7 @@ function getInterfaceIp(interfaceName, recordType) {
 /**
  * 任务执行核心逻辑
  */
-async function runDdnsTask(task) {
+async function runDdnsTask(task, force = false) {
   const provider = providers[task.provider];
   if (!provider) {
     throw new Error(`未知的服务商适配器 "${task.provider}"`);
@@ -150,10 +250,18 @@ async function runDdnsTask(task) {
 
     if (!ip) throw new Error('解析出的 IP 为空');
 
+    // 2. DNS 记录本地缓存，避免无意义的解析商 API 调用
+    if (!force && task.lastIp === ip && task.lastStatus === 'success') {
+      task.lastChecked = new Date().toISOString();
+      task.lastMessage = `IP 未变化 (${ip})，已跳过解析商 API 提交`;
+      await saveTask(task);
+      return;
+    }
+
     // 记录解析出的 IP
     task.lastIp = ip;
 
-    // 2. 调用接口更新域名解析（支持以逗号分割的多个域名）
+    // 3. 调用接口更新域名解析（支持以逗号分割的多个域名）
     const domains = task.domain.split(',').map(d => d.trim()).filter(Boolean);
     let updatedAny = false;
     const errors = [];
@@ -182,7 +290,7 @@ async function runDdnsTask(task) {
       throw new Error(errors.join('; '));
     }
 
-    // 3. 更新任务状态数据
+    // 4. 更新任务状态数据
     task.lastChecked = new Date().toISOString();
     task.lastStatus = 'success';
     task.lastMessage = msgs.join('; ') || '更新成功';
@@ -199,6 +307,10 @@ async function runDdnsTask(task) {
     task.lastMessage = err.message;
     await saveTask(task);
     await addLog(task.id, task.name, 'error', `更新失败: ${err.message}`);
+    sendNotification(
+      'DDNS 域名解析更新失败告警',
+      `任务名称: ${task.name}\n域名: ${task.domain}\n服务商: ${task.provider}\n解析类型: ${task.recordType}\n更新方式: 本地模式\n报错信息: ${err.message}`
+    ).catch(() => {});
     throw err;
   }
 }
@@ -212,7 +324,7 @@ app.post('/api/tasks/:id/run', async (req, res) => {
     return res.status(404).json({ error: '未找到该任务' });
   }
   try {
-    await runDdnsTask(task);
+    await runDdnsTask(task, true);
     res.json({ success: true, message: '域名解析任务已手动触发并执行成功', task });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -354,6 +466,14 @@ app.post('/api/client/report', async (req, res) => {
     const provider = providers[task.provider];
     if (!provider) throw new Error(`未找到该服务商的适配器: "${task.provider}"`);
 
+    // DNS 记录本地缓存，避免无意义的解析商 API 调用
+    if (task.lastIp === ip && task.lastStatus === 'success') {
+      task.lastChecked = new Date().toISOString();
+      task.lastMessage = `客户端上报: IP 未变化 (${ip})，已跳过解析商 API 提交`;
+      await saveTask(task);
+      return res.json({ success: true, message: 'IP 未发生变化，跳过更新', ip, updated: false });
+    }
+
     // 记录客户端上报的 IP
     task.lastIp = ip;
 
@@ -403,6 +523,10 @@ app.post('/api/client/report', async (req, res) => {
     task.lastMessage = `客户端上报了 IP ${ip}，但在执行 DNS 更新时失败: ${err.message}`;
     await saveTask(task);
     await addLog(task.id, task.name, 'error', `客户端上报更新失败: ${err.message}`);
+    sendNotification(
+      'DDNS 域名解析更新失败告警',
+      `任务名称: ${task.name}\n域名: ${task.domain}\n服务商: ${task.provider}\n上报 IP: ${ip}\n更新方式: 远程客户端模式\n报错信息: ${err.message}`
+    ).catch(() => {});
     res.status(500).json({ error: err.message });
   }
 });
@@ -411,13 +535,51 @@ app.post('/api/client/report', async (req, res) => {
  * 日志与设置接口
  */
 app.get('/api/logs', async (req, res) => {
-  const logs = await getLogs(100);
-  res.json(logs);
+  const { type, taskId, limit } = req.query;
+  const dbLogs = await getLogs(500);
+  
+  let filteredLogs = dbLogs;
+  if (taskId) {
+    filteredLogs = filteredLogs.filter(l => l.taskId === taskId);
+  }
+  if (type) {
+    filteredLogs = filteredLogs.filter(l => l.type === type);
+  }
+  
+  const parsedLimit = parseInt(limit) || 100;
+  res.json(filteredLogs.slice(0, parsedLimit));
+});
+
+app.get('/api/ip-history', async (req, res) => {
+  const dbLogs = await getLogs(500);
+  const ipChangeLogs = dbLogs.filter(l => 
+    l.type === 'success' && 
+    (l.message.includes('IP 成功更新') || l.message.includes('上报 IP') || l.message.includes('更新为'))
+  );
+  
+  const history = ipChangeLogs.map(l => {
+    const ipMatch = l.message.match(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/) || 
+                    l.message.match(/([0-9a-fA-F:]+:[0-9a-fA-F:]+)/);
+    const ip = ipMatch ? ipMatch[0] : 'Unknown';
+    
+    return {
+      id: l.id,
+      taskId: l.taskId,
+      taskName: l.taskName,
+      ip: ip,
+      timestamp: l.timestamp,
+      message: l.message
+    };
+  });
+  
+  res.json(history.slice(0, 10));
 });
 
 app.get('/api/settings', async (req, res) => {
   const settings = await getSettings();
-  res.json(settings);
+  const safeSettings = { ...settings };
+  delete safeSettings.password;
+  res.json(safeSettings);
 });
 
 app.post('/api/settings', async (req, res) => {
@@ -612,25 +774,26 @@ async function scheduleCheck() {
         runDdnsTask(task).catch(() => {});
       }
     } else if (task.mode === 'remote-client') {
-      // 检查客户端状态：如果超过 3 个轮询周期没有上报，就发出超时警告
-      const timeoutMs = intervalMs * 3;
+      // 检查客户端状态：如果超过 2.5 个轮询周期没有上报，就发出超时警告并推送通知
+      const timeoutMs = intervalMs * 2.5;
       if (lastCheckedMs > 0 && now - lastCheckedMs >= timeoutMs && task.lastStatus !== 'error') {
         task.lastStatus = 'error';
-        task.lastMessage = '客户端连接超时（未在预定周期内收到上报数据）';
+        task.lastMessage = `客户端连接超时（未在预定周期内收到上报数据）`;
         await saveTask(task);
-        await addLog(task.id, task.name, 'error', `客户端连接超时，已超过 ${task.checkInterval * 3} 分钟未收到任何上报数据。`);
+        await addLog(task.id, task.name, 'error', `客户端连接超时，已超过 ${task.checkInterval * 2.5} 分钟未收到任何上报数据。`);
+        
+        sendNotification(
+          '远程客户端代理离线超时告警',
+          `任务名称: ${task.name}\n域名: ${task.domain}\n状态: 离线超时\n周期设定: ${task.checkInterval}分钟\n最后活跃时间: ${task.lastChecked ? new Date(task.lastChecked).toLocaleString() : '从无上报'}`
+        ).catch(() => {});
       }
     }
   }
 
-  // 每天自动检查并续期一次证书
-  const now = Date.now();
-  if (now - lastCertCheck >= 24 * 60 * 60 * 1000) {
-    lastCertCheck = now;
-    checkAndRenewCerts().catch(err => {
-      console.error('自动续期证书扫描失败:', err.message);
-    });
-  }
+  // 每次轮询检查自动续期证书（acme.js 内部有基于到期天数与退避计时的快速过滤，不会引发多余 API 消耗）
+  checkAndRenewCerts().catch(err => {
+    console.error('自动续期证书扫描失败:', err.message);
+  });
 }
 
 // 每 30 秒执行一次轮询检查

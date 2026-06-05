@@ -1,5 +1,6 @@
 import acme from 'acme-client';
 import { getSettings, saveSettings, saveCert, getCerts, addLog } from './db.js';
+import { sendNotification } from './notify.js';
 import * as cloudflare from '../shared/providers/cloudflare.js';
 import * as aliyun from '../shared/providers/aliyun.js';
 import * as dnspod from '../shared/providers/dnspod.js';
@@ -113,6 +114,8 @@ export async function issueCertificate(cert) {
     // 申请成功，解析证书过期时间并保存证书 PEM 和 KEY PEM
     cert.status = 'success';
     cert.lastUpdated = new Date().toISOString();
+    cert.failureCount = 0;
+    cert.nextRetryTime = 0;
     
     try {
       const certInfo = acme.crypto.readCertificateInfo(certificate);
@@ -134,9 +137,22 @@ export async function issueCertificate(cert) {
     return cert;
   } catch (err) {
     cert.status = 'error';
-    cert.lastMessage = `申请失败: ${err.message}`;
+    cert.failureCount = (cert.failureCount || 0) + 1;
+    
+    // 指数退避时间： 2^failureCount * 10 分钟，最大 24 小时
+    const backoffMs = Math.min(24 * 60 * 60 * 1000, Math.pow(2, cert.failureCount) * 10 * 60 * 1000);
+    cert.nextRetryTime = Date.now() + backoffMs;
+    cert.lastMessage = `申请失败 (第 ${cert.failureCount} 次): ${err.message}`;
+    
     await saveCert(cert);
-    await addLog(cert.id, cert.domain, 'error', `SSL 证书申请/续期失败: ${err.message}`);
+    await addLog(cert.id, cert.domain, 'error', `SSL 证书申请/续期失败: ${err.message}。将在 ${Math.round(backoffMs / 1000 / 60)} 分钟后重试。`);
+    
+    // 发送告警通知
+    sendNotification(
+      'SSL 证书续期失败告警',
+      `域名: ${cert.domain}\n服务商: ${cert.provider}\n报错信息: ${err.message}\n失败次数: ${cert.failureCount}\n重试计划: 将在 ${Math.round(backoffMs / 1000 / 60)} 分钟后自动发起重试。`
+    ).catch(() => {});
+
     throw err;
   }
 }
@@ -150,18 +166,33 @@ export async function checkAndRenewCerts() {
     if (!cert.enabled) continue;
     if (cert.status === 'processing') continue;
 
-    // 检查有效期，如果少于 30 天则自动续期
+    const now = Date.now();
+    let shouldRenew = false;
+
+    // 1. 检查有效期，如果少于 30 天则自动续期
     if (cert.expiryDate) {
       const expiryMs = new Date(cert.expiryDate).getTime();
-      const now = Date.now();
       const remainDays = (expiryMs - now) / (24 * 60 * 60 * 1000);
       
       if (remainDays < 30) {
+        shouldRenew = true;
         console.log(`[SSL 续期] 证书 ${cert.domain} 剩余有效期 ${remainDays.toFixed(1)} 天，触发自动续期...`);
-        issueCertificate(cert).catch(e => {
-          console.error(`[SSL 续期错误] 自动续期 ${cert.domain} 失败: ${e.message}`);
-        });
       }
+    } else if (cert.status !== 'success' && cert.status !== 'error') {
+      // 首次新建配置，尚未申请过，触发申请
+      shouldRenew = true;
+    }
+
+    // 2. 检查退避重试时间
+    if (cert.status === 'error' && cert.nextRetryTime && now >= cert.nextRetryTime) {
+      shouldRenew = true;
+      console.log(`[SSL 重试] 证书 ${cert.domain} 退避重试时间已到，开始重新申请...`);
+    }
+
+    if (shouldRenew) {
+      issueCertificate(cert).catch(e => {
+        console.error(`[SSL 自动更新错误] 自动申请/续期 ${cert.domain} 失败: ${e.message}`);
+      });
     }
   }
 }

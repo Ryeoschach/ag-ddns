@@ -84,6 +84,16 @@
           <p data-i18n="emptyStateSub">Click "New DDNS Task" to add your first domain configuration.</p>
         </div>
       </div>
+
+      <!-- 最近 IP 变动历史 -->
+      <div class="ip-history-panel" id="ipHistoryPanel" style="margin-top: 2rem; display: none;">
+        <h3 data-i18n="secIpHistoryTitle" style="font-size: 1.1rem; color: var(--neon-cyan); text-transform: uppercase; margin-bottom: 1rem; border-bottom: 2px solid rgba(0, 243, 255, 0.2); padding-bottom: 0.3rem; font-weight: 900; letter-spacing: 0.05em;">Recent IP Changes History</h3>
+        <div class="console-box" style="border-color: var(--neon-cyan); box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);">
+          <div id="ipHistoryContent" class="console-content" style="max-height: 200px; overflow-y: auto; font-family: var(--font-mono); font-size: 0.85rem; padding: 1rem;">
+            <!-- 由 JS 动态填充的变动历史 -->
+          </div>
+        </div>
+      </div>
     </main>
 
     <!-- SSL 证书管理列表 -->
@@ -133,9 +143,21 @@
 
     <!-- 活动日志控制台 -->
     <section class="logs-section">
-      <div class="section-header">
+      <div class="section-header" style="flex-wrap: wrap; gap: 1rem;">
         <h2 data-i18n="secLogsTitle">Activity Console Logs</h2>
-        <button id="btnClearLogs" class="btn-text" data-i18n="btnClearLogs">Clear Console</button>
+        <div class="logs-controls" style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-left: auto;">
+          <select id="logFilterTask" class="form-control" style="width: auto; padding: 0.3rem 0.5rem; background-color: var(--input-bg); border-color: var(--panel-border); color: var(--text-color); font-size: 0.8rem; height: auto;">
+            <option value="" data-i18n="optAllTasks">All Tasks</option>
+          </select>
+          <select id="logFilterType" class="form-control" style="width: auto; padding: 0.3rem 0.5rem; background-color: var(--input-bg); border-color: var(--panel-border); color: var(--text-color); font-size: 0.8rem; height: auto;">
+            <option value="" data-i18n="optAllLogTypes">All Types</option>
+            <option value="success" data-i18n="optLogSuccess">Success</option>
+            <option value="error" data-i18n="optLogError">Error</option>
+            <option value="info" data-i18n="optLogInfo">Info</option>
+          </select>
+          <button id="btnDownloadLogs" class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; border-color: var(--neon-cyan); color: var(--neon-cyan); height: auto; box-shadow: 0 0 5px rgba(0, 243, 255, 0.1);" data-i18n="btnDownloadLogs">Download</button>
+          <button id="btnClearLogs" class="btn-text" style="padding: 0.3rem 0.5rem; font-size: 0.8rem;" data-i18n="btnClearLogs">Clear Console</button>
+        </div>
       </div>
       <div class="console-box">
         <div id="logsConsole" class="console-content">
@@ -463,6 +485,51 @@
         </div>
 
         <div class="form-group">
+          <label for="settingPassword" data-i18n="lblDashboardPassword">Dashboard Password</label>
+          <input type="password" id="settingPassword" placeholder="Enter new password">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+            <input type="checkbox" id="settingDisablePassword" style="width: auto; margin: 0; cursor: pointer;">
+            <label for="settingDisablePassword" data-i18n="lblDisablePasswordAuth" style="margin: 0; font-size: 0.8rem; cursor: pointer; color: var(--neon-cyan);">Remove password protection (public access)</label>
+          </div>
+          <small class="form-help" data-i18n="helpDashboardPassword">Enter a new password to restrict Web UI access, or check the box to remove authentication.</small>
+        </div>
+
+        <div class="form-section-title" data-i18n="sectionNotifications" style="margin-top: 1.5rem; margin-bottom: 0.8rem; font-size: 0.95rem; font-weight: 700; color: var(--neon-pink); border-bottom: 1px solid rgba(255, 0, 85, 0.2); padding-bottom: 0.3rem; text-transform: uppercase;">Notification Settings</div>
+
+        <div class="form-group">
+          <label data-i18n="lblNotifyTelegram">Telegram Bot Token & Chat ID</label>
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <input type="text" id="settingNotifyTelegramToken" placeholder="Bot Token (e.g. 123456:ABC...)" style="flex: 2; font-family: var(--font-mono); font-size: 0.8rem; background-color: var(--input-bg); border: 2px solid var(--panel-border); color: var(--text-color); outline: none; padding: 0.6rem; border-radius: 0;">
+            <input type="text" id="settingNotifyTelegramChatId" placeholder="Chat ID (e.g. -100123...)" style="flex: 1; font-family: var(--font-mono); font-size: 0.8rem; background-color: var(--input-bg); border: 2px solid var(--panel-border); color: var(--text-color); outline: none; padding: 0.6rem; border-radius: 0;">
+          </div>
+          <small class="form-help" data-i18n="helpNotifyTelegram">Telegram bot access token and chat ID. Leave empty to disable.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="settingNotifyDingTalk" data-i18n="lblNotifyDingTalk">DingTalk Webhook URL</label>
+          <input type="url" id="settingNotifyDingTalk" placeholder="https://oapi.dingtalk.com/robot/send?access_token=...">
+          <small class="form-help" data-i18n="helpNotifyDingTalk">DingTalk bot access token webhook URL. Leave empty to disable.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="settingNotifyWeChat" data-i18n="lblNotifyWeChat">WeChat Work Webhook URL</label>
+          <input type="url" id="settingNotifyWeChat" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...">
+          <small class="form-help" data-i18n="helpNotifyWeChat">WeChat Work bot webhook URL. Leave empty to disable.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="settingNotifyFeishu" data-i18n="lblNotifyFeishu">Feishu Webhook URL</label>
+          <input type="url" id="settingNotifyFeishu" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/...">
+          <small class="form-help" data-i18n="helpNotifyFeishu">Feishu bot webhook URL. Leave empty to disable.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="settingNotifyCustomUrl" data-i18n="lblNotifyCustomUrl">Custom HTTP Webhook URL</label>
+          <input type="url" id="settingNotifyCustomUrl" placeholder="http://example.com/notify">
+          <small class="form-help" data-i18n="helpNotifyCustomUrl">A custom URL that will receive notifications via POST request (JSON payload). Leave empty to disable.</small>
+        </div>
+
+        <div class="form-group" style="margin-top: 1.5rem;">
           <label for="settingScriptInfo" data-i18n="lblSettingScriptInfo">Custom Script Header Info / License</label>
           <textarea id="settingScriptInfo" rows="4" placeholder="e.g. Author: John Doe&#10;License: MIT" style="font-family: var(--font-mono); font-size: 0.8rem; background-color: var(--input-bg); border: 2px solid var(--panel-border); color: var(--text-color); outline: none; padding: 0.6rem; width: 100%; border-radius: 0; resize: vertical;"></textarea>
           <small class="form-help" data-i18n="helpSettingScriptInfo">This custom text will be prepended as comments at the top of generated scripts.</small>
@@ -517,6 +584,26 @@
         <button id="btnConfirmCancel" class="btn btn-secondary" data-i18n="btnCancel">Cancel</button>
         <button id="btnConfirmOK" class="btn btn-primary" data-i18n="btnConfirm">Confirm</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 登录校验对话框 -->
+  <div id="loginModal" class="modal">
+    <div class="modal-content" style="max-width: 400px; border-color: var(--neon-cyan); box-shadow: 0 0 30px rgba(0, 243, 255, 0.3);">
+      <div class="modal-header" style="border-bottom-color: var(--neon-cyan); background-color: rgba(0, 243, 255, 0.05);">
+        <h3 style="color: var(--neon-cyan);" data-i18n="loginTitle">System Login</h3>
+      </div>
+      <form id="loginForm" style="padding: 0;">
+        <div class="modal-body" style="padding: 1.5rem;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="loginPassword" data-i18n="lblLoginPassword" style="color: var(--neon-cyan); font-family: var(--font-mono); font-size: 0.8rem; display: block; margin-bottom: 0.5rem;">Enter Dashboard Password</label>
+            <input type="password" id="loginPassword" style="border: 2px solid var(--neon-cyan); color: var(--neon-cyan); background-color: var(--input-bg); box-shadow: inset 0 0 5px rgba(0, 243, 255, 0.2); width: 100%; border-radius: 0; outline: none; padding: 0.6rem;" placeholder="Password" required>
+          </div>
+        </div>
+        <div class="modal-footer" style="justify-content: flex-end; padding: 0 1.5rem 1.5rem 1.5rem; border-top: none; background: transparent;">
+          <button type="submit" id="btnLoginSubmit" class="btn" style="background: transparent; border: 2px solid var(--neon-cyan); color: var(--neon-cyan); box-shadow: 0 0 10px rgba(0, 243, 255, 0.2); padding: 0.5rem 1.2rem; cursor: pointer;" data-i18n="btnLogin">Authorize</button>
+        </div>
+      </form>
     </div>
   </div>
 
