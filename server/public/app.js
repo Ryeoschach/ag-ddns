@@ -1092,27 +1092,35 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error(data.error || 'Failed to download certificate');
       }
       
-      // Download .crt
+      const fileNameBase = data.domain.replace(/\*/g, 'star');
+
+      // 1. Download .crt file
       const crtBlob = new Blob([data.cert], { type: 'application/x-pem-file' });
       const crtUrl = URL.createObjectURL(crtBlob);
       const crtLink = document.createElement('a');
       crtLink.href = crtUrl;
-      crtLink.download = `${data.domain.replace(/\*/g, 'star')}.crt`;
+      crtLink.download = `${fileNameBase}.crt`;
       document.body.appendChild(crtLink);
       crtLink.click();
       document.body.removeChild(crtLink);
-      URL.revokeObjectURL(crtUrl);
       
-      // Download .key
-      const keyBlob = new Blob([data.key], { type: 'application/x-pem-file' });
-      const keyUrl = URL.createObjectURL(keyBlob);
-      const keyLink = document.createElement('a');
-      keyLink.href = keyUrl;
-      keyLink.download = `${data.domain.replace(/\*/g, 'star')}.key`;
-      document.body.appendChild(keyLink);
-      keyLink.click();
-      document.body.removeChild(keyLink);
-      URL.revokeObjectURL(keyUrl);
+      // 2. Download .key file with 400ms delay to prevent browser multi-download interception
+      setTimeout(() => {
+        const keyBlob = new Blob([data.key], { type: 'application/x-pem-file' });
+        const keyUrl = URL.createObjectURL(keyBlob);
+        const keyLink = document.createElement('a');
+        keyLink.href = keyUrl;
+        keyLink.download = `${fileNameBase}.key`;
+        document.body.appendChild(keyLink);
+        keyLink.click();
+        document.body.removeChild(keyLink);
+
+        // Revoke ObjectURLs after downloads complete
+        setTimeout(() => {
+          URL.revokeObjectURL(crtUrl);
+          URL.revokeObjectURL(keyUrl);
+        }, 3000);
+      }, 400);
       
     } catch (e) {
       showToast(`Download failed: ${e.message}`, 'error');
